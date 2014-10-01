@@ -17,6 +17,7 @@ class Evaluator {
 	private static double[] precisions = new double[3];
 	private static double[] recalls = new double[3];
 	private static double[] fMeasure = new double[3];
+	private static double[] NDCG = new double[3];
 	private static double[] precisionRecallPoint = new double[11];
 	private static double reciprocal = 0.0;
 	private static List<Double> points = new ArrayList<Double>();
@@ -35,9 +36,7 @@ class Evaluator {
 		evaluateStdin(relevance_judgments, document_gain);
 	}
 
-	public static void readRelevanceJudgments(String p,
-			HashMap<String, HashMap<Integer, Double>> relevance_judgments,
-			HashMap<String, HashMap<Integer, Double>> document_gain) {
+	public static void readRelevanceJudgments(String p, HashMap<String, HashMap<Integer, Double>> relevance_judgments, HashMap<String, HashMap<Integer, Double>> document_gain) {
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(p));
 			try {
@@ -51,9 +50,7 @@ class Evaluator {
 					double rel = 0.0;
 					double value = 0.0;
 					// convert to binary relevance
-					if ((grade.equals("Perfect"))
-							|| (grade.equals("Excellent"))
-							|| (grade.equals("Good"))) {
+					if ((grade.equals("Perfect")) || (grade.equals("Excellent")) || (grade.equals("Good"))) {
 						rel = 1.0;
 					}
 					if (grade.equals("Perfect")) {
@@ -73,8 +70,7 @@ class Evaluator {
 						HashMap<Integer, Double> gain = new HashMap<Integer, Double>();
 						document_gain.put(query, gain);
 					}
-					HashMap<Integer, Double> qr = relevance_judgments
-							.get(query);
+					HashMap<Integer, Double> qr = relevance_judgments.get(query);
 					HashMap<Integer, Double> gain = document_gain.get(query);
 					qr.put(did, rel);
 					gain.put(did, value);
@@ -87,20 +83,18 @@ class Evaluator {
 		}
 	}
 
-	public static void evaluateStdin(
-			HashMap<String, HashMap<Integer, Double>> relevance_judgments,
-			HashMap<String, HashMap<Integer, Double>> document_gain) {
+	public static void evaluateStdin(HashMap<String, HashMap<Integer, Double>> relevance_judgments, HashMap<String, HashMap<Integer, Double>> document_gain) {
 		// only consider one query per call
 		try {
-			
-			BufferedReader reader = new BufferedReader(new InputStreamReader(
-					System.in));
+
+			BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 			String line = null;
 			double RR = 0.0; // this represent all relevant file.
 			int N = 0;
 			boolean flag = true;
 			double DCG = 0.0;
 			String query = null;
+			List<Double> standardDCGs = null;
 			while ((line = reader.readLine()) != null) {
 				Scanner s = new Scanner(line).useDelimiter("\t");
 				query = s.next();
@@ -121,24 +115,49 @@ class Evaluator {
 				}
 
 				storeEachPoint(RR);
-				DCG = computeDCG(document_gain, query, did, N, DCG);
+				if (N == 1) {
+					standardDCGs = computeDCGS(document_gain, query);
+				}
+				DCG = computeNDCG(document_gain, query, did, N, DCG, standardDCGs);
 			}
 
 			// for last query
 			double averagePrecision = computePrecisionAndRecall(RR);
 			computeFAtK();
-			double NDCG = computeNDCG(document_gain, query, DCG);
-			System.out.print(Arrays.toString(precisionRecallPoint));
-			System.out.print(Arrays.toString(precisions));
-			System.out.print(Arrays.toString(recalls));
-			System.out.print(reciprocal);
-			System.out.print(averagePrecision);
-			System.out.print(Arrays.toString(fMeasure));
-			System.out.print(NDCG);
+			printResult(averagePrecision, reciprocal);
 			// System.out.println(Double.toString(RR/N));
 		} catch (Exception e) {
 			System.err.println("Error:" + e.getMessage());
 		}
+	}
+
+	private static void printResult(double averagePrecision, double reciprocal) {
+		System.out.println("Precision@1: " + precisions[0]);
+		System.out.println("Precision@5: " + precisions[1]);
+		System.out.println("Precision@10 :" + precisions[2]);
+		System.out.println("Recall@1: " + recalls[0]);
+		System.out.println("Recall@5: " + recalls[1]);
+		System.out.println("Recall@10: " + recalls[2]);
+		System.out.println("F0.5@1: " + fMeasure[0]);
+		System.out.println("F0.5@5: " + fMeasure[1]);
+		System.out.println("F0.5@10: " + fMeasure[2]);
+		System.out.println("Precision at Recall 0.0: " + precisionRecallPoint[0]);
+		System.out.println("Precision at Recall 0.1: " + precisionRecallPoint[1]);
+		System.out.println("Precision at Recall 0.2: " + precisionRecallPoint[2]);
+		System.out.println("Precision at Recall 0.3: " + precisionRecallPoint[3]);
+		System.out.println("Precision at Recall 0.4: " + precisionRecallPoint[4]);
+		System.out.println("Precision at Recall 0.5: " + precisionRecallPoint[5]);
+		System.out.println("Precision at Recall 0.6: " + precisionRecallPoint[6]);
+		System.out.println("Precision at Recall 0.7: " + precisionRecallPoint[7]);
+		System.out.println("Precision at Recall 0.8: " + precisionRecallPoint[8]);
+		System.out.println("Precision at Recall 0.9: " + precisionRecallPoint[9]);
+		System.out.println("Precision at Recall 1.0: " + precisionRecallPoint[10]);
+		System.out.println("Average Precision: " + averagePrecision);
+		System.out.println("NDCG@1: " + NDCG[0]);
+		System.out.println("NDCG@5: " + NDCG[1]);
+		System.out.println("NDCG@10: " + NDCG[2]);
+		System.out.println("Reciprocal rank: " + reciprocal);
+
 	}
 
 	private static double computePrecisionAndRecall(double RR) {
@@ -159,15 +178,13 @@ class Evaluator {
 			} else if (i > 0 && points.get(i) > points.get(i - 1)) {
 				averagePrecision += points.get(i) / (i + 1);
 			}
-			computtePrecisionRecallGraph(points.get(i) / RR, points.get(i)
-					/ (i + 1));
+			computtePrecisionRecallGraph(points.get(i) / RR, points.get(i) / (i + 1));
 		}
 		averagePrecision /= RR;
 		return averagePrecision;
 	}
 
-	private static void computtePrecisionRecallGraph(double recall,
-			double precision) {
+	private static void computtePrecisionRecallGraph(double recall, double precision) {
 		for (double value = 0.0; value <= 1.0; value = value + 0.1) {
 			if (Math.abs(recall - value) <= 0.000001) {
 				int a = (int) Math.ceil(value / 0.1);
@@ -188,21 +205,35 @@ class Evaluator {
 		points.add(RR);
 	}
 
-	public static double computeDCG(
-			HashMap<String, HashMap<Integer, Double>> document_gain,
-			String query, int did, int n, double DCG) {
+	public static double computeNDCG(HashMap<String, HashMap<Integer, Double>> document_gain, String query, int did, int n, double DCG, List<Double> standardDCGs) {
 		if (!document_gain.containsKey(query))
 			return 0;
 		HashMap<Integer, Double> gain = document_gain.get(query);
 		if (gain.containsKey(did)) {
 			DCG += gain.get(did) / Math.log(n + 1);
 		}
+
+		double standardDCG = 0;
+		if (n == 1 || n == 5 || n == 10) {
+			if (n > standardDCGs.size())
+				standardDCG = standardDCGs.get(standardDCGs.size() - 1);
+			else
+				standardDCG = standardDCGs.get(n - 1);
+
+			if (n == 1) {
+				NDCG[0] = DCG / standardDCG;
+			} else if (n == 5) {
+				NDCG[1] = DCG / standardDCG;
+			} else if (n == 10) {
+				NDCG[2] = DCG / standardDCG;
+			}
+		}
+
 		return DCG;
 	}
 
-	private static double computeNDCG(
-			HashMap<String, HashMap<Integer, Double>> document_gain,
-			String query, double DCG) {
+	private static List<Double> computeDCGS(HashMap<String, HashMap<Integer, Double>> document_gain, String query) {
+		List<Double> standardDCGs = new ArrayList<Double>();
 		double standardDCG = 0.0;
 		int number = 1;
 		int perfect = 0;
@@ -213,6 +244,7 @@ class Evaluator {
 		for (Double value : gain.values()) {
 			if (value == 10.0) {
 				perfect++;
+
 			} else if (value == 7.0) {
 				excellent++;
 			} else if (value == 5.0) {
@@ -224,25 +256,29 @@ class Evaluator {
 
 		while (perfect > 0) {
 			standardDCG += 10.0 / Math.log(number + 1);
+			standardDCGs.add(standardDCG);
 			number++;
 			perfect--;
 		}
 		while (excellent > 0) {
 			standardDCG += 7.0 / Math.log(number + 1);
+			standardDCGs.add(standardDCG);
 			number++;
 			excellent--;
 		}
 		while (good > 0) {
 			standardDCG += 5.0 / Math.log(number + 1);
+			standardDCGs.add(standardDCG);
 			number++;
 			good--;
 		}
 		while (fair > 0) {
 			standardDCG += 1.0 / Math.log(number + 1);
+			standardDCGs.add(standardDCG);
 			number++;
 			fair--;
 		}
-		return DCG / standardDCG;
+		return standardDCGs;
 	}
-
+//test
 }
