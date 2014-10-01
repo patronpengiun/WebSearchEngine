@@ -66,11 +66,30 @@ class Evaluator {
       BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
       
       String line = null;
-      double RR = 0.0;
-      double N = 0.0;
+      double RR = 0.0;			// number of current relevent ranks
+      double R = -1;			// number of total relevent ranks
+      double N = 0.0;			// number of ranks
+      
+      double p1 = 0.0;			// precision@1
+      double p5 = 0.0;			// precision@5
+      double p10 = 0.0;			// precision@10
+      
+      double r1 = 0.0;			// recall@1
+      double r5 = 0.0;			// recall@5
+      double r10 = 0.0;			// recall@10
+      
+      
+      
       while ((line = reader.readLine()) != null){
         Scanner s = new Scanner(line).useDelimiter("\t");
         String query = s.next();
+        
+        if (R < 0) {		// check if R is calculated
+        	for (double value: relevance_judgments.get(query).values()) {
+            	  if (1.0 == value) R++;
+              }
+        }       
+        
         int did = Integer.parseInt(s.next());
       	String title = s.next();
       	double rel = Double.parseDouble(s.next());
@@ -82,8 +101,22 @@ class Evaluator {
       	  RR += qr.get(did);					
       	}
       	++N;
+      	
+      	if (N == 1) {
+      		p1 = RR / N;
+      		r1 = RR / R;
+      	} else if (N == 5) {
+      		p5 = RR / N;
+      		r5 = RR / R;
+      	} else if (N == 10) {
+      		p10 = RR / N;
+      		r10 = RR / R;
+      	}
       }
-      System.out.println(Double.toString(RR/N));
+      
+      // this is the output of the evaluation results
+      System.out.println("Precision@1: " + p1 + "\n" + "Precision@5: " + p5 + "\n" + "Precision@10: " + p10);
+      System.out.println("Recall@1: " + r1 + "\n" + "Recall@5: " + r5 + "\n" + "Recall@10: " + r10); 
     } catch (Exception e){
       System.err.println("Error:" + e.getMessage());
     }
