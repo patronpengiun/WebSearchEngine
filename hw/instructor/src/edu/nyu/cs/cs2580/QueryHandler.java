@@ -51,6 +51,7 @@ class QueryHandler implements HttpHandler {
     String queryResponse = "";  
     String uriQuery = exchange.getRequestURI().getQuery();
     String uriPath = exchange.getRequestURI().getPath();
+    boolean html_flag = false;
 
     if ((uriPath != null) && (uriQuery != null)){
       if (uriPath.equals("/search")){
@@ -92,7 +93,8 @@ class QueryHandler implements HttpHandler {
                   queryResponse = queryResponse + "\n";
                 }
           } else if (query_map.get("format").equals("html")) {
-        	  queryResponse = HtmlGenerator.generateFromScoredDocuments(sds);
+        	  queryResponse = HtmlGenerator.generateFromScoredDocuments(sds, query_map.get("query"));
+        	  html_flag = true;
           } else {
         	  queryResponse = "Format not supported";
           }
@@ -102,7 +104,10 @@ class QueryHandler implements HttpHandler {
     
     // Construct a simple response.
     Headers responseHeaders = exchange.getResponseHeaders();
-    responseHeaders.set("Content-Type", "text/plain");
+    if (html_flag)
+    	responseHeaders.set("Content-Type", "text/html");
+    else
+    	responseHeaders.set("Content-Type", "text/plain");
     exchange.sendResponseHeaders(200, 0);  // arbitrary number of bytes
     OutputStream responseBody = exchange.getResponseBody();
     responseBody.write(queryResponse.getBytes());

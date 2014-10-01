@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style>
+	
+	</style>
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+	<script>
+		function log(element) {
+			$.ajax("/log", 
+				{
+					type: "POST",
+					data: { did: element.id, session: $('#session').val(), query: $('#query').val()}
+				}
+			);
+		}
+	</script>
+</head>
+<body>
+
