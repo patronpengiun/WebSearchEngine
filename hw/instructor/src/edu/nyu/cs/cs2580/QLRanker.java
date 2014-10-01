@@ -10,7 +10,7 @@ public class QLRanker extends Ranker{
 	
 	@Override
 	public ScoredDocument runquery(String query, int did){
-		System.out.println(did);
+//		System.out.println(did);
 		
 	    // Build query vector
 	    Scanner s = new Scanner(query);

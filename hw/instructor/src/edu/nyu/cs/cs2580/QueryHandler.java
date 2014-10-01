@@ -51,6 +51,7 @@ class QueryHandler implements HttpHandler {
     String queryResponse = "";  
     String uriQuery = exchange.getRequestURI().getQuery();
     String uriPath = exchange.getRequestURI().getPath();
+    boolean html_flag = false;
 
     if ((uriPath != null) && (uriQuery != null)){
       if (uriPath.equals("/search")){
@@ -80,26 +81,36 @@ class QueryHandler implements HttpHandler {
           // use the Ranker class.
           Vector < ScoredDocument > sds = _ranker.runquery(query_map.get("query"));
           Iterator < ScoredDocument > itr = sds.iterator();
-          while (itr.hasNext()){
-            ScoredDocument sd = itr.next();
-            if (queryResponse.length() > 0){
-              queryResponse = queryResponse + "\n";
-            }
-            queryResponse = queryResponse + query_map.get("query") + "\t" + sd.asString();
-          }
-          if (queryResponse.length() > 0){
-            queryResponse = queryResponse + "\n";
+          if (null == query_map.get("format") || query_map.get("format").equals("text")) {
+        	  while (itr.hasNext()){
+                  ScoredDocument sd = itr.next();
+                  if (queryResponse.length() > 0){
+                    queryResponse = queryResponse + "\n";
+                  }
+                  queryResponse = queryResponse + query_map.get("query") + "\t" + sd.asString();
+                }
+                if (queryResponse.length() > 0){
+                  queryResponse = queryResponse + "\n";
+                }
+          } else if (query_map.get("format").equals("html")) {
+        	  queryResponse = HtmlGenerator.generateFromScoredDocuments(sds, query_map.get("query"));
+        	  html_flag = true;
+          } else {
+        	  queryResponse = "Format not supported";
           }
         }
       }
     }
     
-      // Construct a simple response.
-      Headers responseHeaders = exchange.getResponseHeaders();
-      responseHeaders.set("Content-Type", "text/plain");
-      exchange.sendResponseHeaders(200, 0);  // arbitrary number of bytes
-      OutputStream responseBody = exchange.getResponseBody();
-      responseBody.write(queryResponse.getBytes());
-      responseBody.close();
+    // Construct a simple response.
+    Headers responseHeaders = exchange.getResponseHeaders();
+    if (html_flag)
+    	responseHeaders.set("Content-Type", "text/html");
+    else
+    	responseHeaders.set("Content-Type", "text/plain");
+    exchange.sendResponseHeaders(200, 0);  // arbitrary number of bytes
+    OutputStream responseBody = exchange.getResponseBody();
+    responseBody.write(queryResponse.getBytes());
+    responseBody.close();
   }
 }

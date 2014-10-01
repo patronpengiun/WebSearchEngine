@@ -14,8 +14,8 @@ public class SearchEngine {
   // to your group number.
   public static void main(String[] args) throws IOException {
     // Create the server.
-    if (args.length < 2){
-      System.out.println("arguments for this program are: [PORT] [PATH-TO-CORPUS]");
+    if (args.length < 3){
+      System.out.println("arguments for this program are: [PORT] [PATH-TO-CORPUS] [PATH-TO-LOG]");
       return;
     }
     int port = Integer.parseInt(args[0]);
@@ -25,8 +25,11 @@ public class SearchEngine {
 
     Ranker ranker = new Ranker(new Index(index_path));
     
+    LogService.SetLogFilePath(args[2]);
+    
     // Attach specific paths to their handlers.
     server.createContext("/", new QueryHandler(ranker));
+    server.createContext("/log", new LogHandler());
     server.setExecutor(Executors.newCachedThreadPool());
     server.start();
     System.out.println("Listening on port: " + Integer.toString(port));

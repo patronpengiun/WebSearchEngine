@@ -169,8 +169,8 @@ class Evaluator {
 	private static void computtePrecisionRecallGraph(double recall,
 			double precision) {
 		for (double value = 0.0; value <= 1.0; value = value + 0.1) {
-			if (Math.abs(recall - value) <= 0.0001) {
-				int a = (int) (value / 0.1);
+			if (Math.abs(recall - value) <= 0.000001) {
+				int a = (int) Math.ceil(value / 0.1);
 				precisionRecallPoint[a] = precision;
 				break;
 			}
@@ -244,4 +244,5 @@ class Evaluator {
 		}
 		return DCG / standardDCG;
 	}
+
 }
