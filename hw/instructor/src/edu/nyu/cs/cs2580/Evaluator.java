@@ -1,5 +1,8 @@
 package edu.nyu.cs.cs2580;
 
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
 import java.io.FileReader;
@@ -20,7 +23,9 @@ class Evaluator {
 	private static double[] NDCG = new double[3];
 	private static double[] precisionRecallPoint = new double[11];
 	private static double reciprocal = 0.0;
+	private static double averagePrecision = 0.0;
 	private static List<Double> points = new ArrayList<Double>();
+	private static String query;
 
 	public static void main(String[] args) throws IOException {
 		HashMap<String, HashMap<Integer, Double>> relevance_judgments = new HashMap<String, HashMap<Integer, Double>>();
@@ -34,6 +39,71 @@ class Evaluator {
 		readRelevanceJudgments(p, relevance_judgments, document_gain);
 		// now evaluate the results from stdin
 		evaluateStdin(relevance_judgments, document_gain);
+		storeResultInCSV(args[1]);
+	}
+
+	private static void storeResultInCSV(String ranker) {
+		String file = null;
+		if (ranker.equals("vsm"))
+			file = "hw1.3-vsm.tsv";
+		else if (ranker.equals("QL"))
+			file = "hw1.3-ql.tsv";
+		else if (ranker.equals("phrase"))
+			file = "hw1.3-phrase.tsv";
+		else if (ranker.equals("cosine"))
+			file = "hw1.3-numviews.tsv";
+		else if (ranker.equals("linear"))
+			file = "hw1.3-linear.tsv";
+		try {
+			File csv = new File(file);
+			BufferedWriter bw = new BufferedWriter(new FileWriter(csv, true));
+			bw.newLine();
+//			String title = String.format("Query,Precision@1,Precision@5,Precision@10,Recall@1,Recall@5,Recall@10,F0.5@1,F0.5@5,F0.5@10,"
+//					+ "Precision at Recall 0.0,Precision at Recall 0.1,Precision at Recall 0.2,Precision at Recall 0.3,Precision at Recall 0.4,"
+//					+ "Precision at Recall 0.5, Precision at Recall 0.6,Precision at Recall 0.7, Precision at Recall 0.8,Precision at Recall 0.9,"
+//					+ "Precision at Recall 1.0,Average Precision,NDCG@1,NDCG@5,NDCG@10,Reciprocal Rank");
+//			bw.write(title);
+//			bw.newLine();
+			String result = String.format("%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f",query, precisions[0], precisions[1], precisions[2], recalls[0], recalls[1],
+					recalls[2], fMeasure[0], fMeasure[1], fMeasure[2], precisionRecallPoint[0], precisionRecallPoint[1], precisionRecallPoint[2], precisionRecallPoint[3], precisionRecallPoint[4],
+					precisionRecallPoint[5], precisionRecallPoint[6], precisionRecallPoint[7], precisionRecallPoint[8], precisionRecallPoint[9], precisionRecallPoint[10], averagePrecision, NDCG[0],
+					NDCG[1], NDCG[2], reciprocal);
+			bw.write(result);
+			bw.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		printResult();
+	}
+	private static void printResult() {
+		System.out.println("Precision@1: " + precisions[0]);
+		System.out.println("Precision@5: " + precisions[1]);
+		System.out.println("Precision@10 :" + precisions[2]);
+		System.out.println("Recall@1: " + recalls[0]);
+		System.out.println("Recall@5: " + recalls[1]);
+		System.out.println("Recall@10: " + recalls[2]);
+		System.out.println("F0.5@1: " + fMeasure[0]);
+		System.out.println("F0.5@5: " + fMeasure[1]);
+		System.out.println("F0.5@10: " + fMeasure[2]);
+		System.out.println("Precision at Recall 0.0: " + precisionRecallPoint[0]);
+		System.out.println("Precision at Recall 0.1: " + precisionRecallPoint[1]);
+		System.out.println("Precision at Recall 0.2: " + precisionRecallPoint[2]);
+		System.out.println("Precision at Recall 0.3: " + precisionRecallPoint[3]);
+		System.out.println("Precision at Recall 0.4: " + precisionRecallPoint[4]);
+		System.out.println("Precision at Recall 0.5: " + precisionRecallPoint[5]);
+		System.out.println("Precision at Recall 0.6: " + precisionRecallPoint[6]);
+		System.out.println("Precision at Recall 0.7: " + precisionRecallPoint[7]);
+		System.out.println("Precision at Recall 0.8: " + precisionRecallPoint[8]);
+		System.out.println("Precision at Recall 0.9: " + precisionRecallPoint[9]);
+		System.out.println("Precision at Recall 1.0: " + precisionRecallPoint[10]);
+		System.out.println("Average Precision: " + averagePrecision);
+		System.out.println("NDCG@1: " + NDCG[0]);
+		System.out.println("NDCG@5: " + NDCG[1]);
+		System.out.println("NDCG@10: " + NDCG[2]);
+		System.out.println("Reciprocal rank: " + reciprocal);
+
 	}
 
 	public static void readRelevanceJudgments(String p, HashMap<String, HashMap<Integer, Double>> relevance_judgments, HashMap<String, HashMap<Integer, Double>> document_gain) {
@@ -93,7 +163,7 @@ class Evaluator {
 			int N = 0;
 			boolean flag = true;
 			double DCG = 0.0;
-			String query = null;
+			query = null;
 			List<Double> standardDCGs = null;
 			while ((line = reader.readLine()) != null) {
 				Scanner s = new Scanner(line).useDelimiter("\t");
@@ -122,42 +192,13 @@ class Evaluator {
 			}
 
 			// for last query
-			double averagePrecision = computePrecisionAndRecall(RR);
+			averagePrecision = computePrecisionAndRecall(RR);
 			computeFAtK();
-			printResult(averagePrecision, reciprocal);
+
 			// System.out.println(Double.toString(RR/N));
 		} catch (Exception e) {
 			System.err.println("Error:" + e.getMessage());
 		}
-	}
-
-	private static void printResult(double averagePrecision, double reciprocal) {
-		System.out.println("Precision@1: " + precisions[0]);
-		System.out.println("Precision@5: " + precisions[1]);
-		System.out.println("Precision@10 :" + precisions[2]);
-		System.out.println("Recall@1: " + recalls[0]);
-		System.out.println("Recall@5: " + recalls[1]);
-		System.out.println("Recall@10: " + recalls[2]);
-		System.out.println("F0.5@1: " + fMeasure[0]);
-		System.out.println("F0.5@5: " + fMeasure[1]);
-		System.out.println("F0.5@10: " + fMeasure[2]);
-		System.out.println("Precision at Recall 0.0: " + precisionRecallPoint[0]);
-		System.out.println("Precision at Recall 0.1: " + precisionRecallPoint[1]);
-		System.out.println("Precision at Recall 0.2: " + precisionRecallPoint[2]);
-		System.out.println("Precision at Recall 0.3: " + precisionRecallPoint[3]);
-		System.out.println("Precision at Recall 0.4: " + precisionRecallPoint[4]);
-		System.out.println("Precision at Recall 0.5: " + precisionRecallPoint[5]);
-		System.out.println("Precision at Recall 0.6: " + precisionRecallPoint[6]);
-		System.out.println("Precision at Recall 0.7: " + precisionRecallPoint[7]);
-		System.out.println("Precision at Recall 0.8: " + precisionRecallPoint[8]);
-		System.out.println("Precision at Recall 0.9: " + precisionRecallPoint[9]);
-		System.out.println("Precision at Recall 1.0: " + precisionRecallPoint[10]);
-		System.out.println("Average Precision: " + averagePrecision);
-		System.out.println("NDCG@1: " + NDCG[0]);
-		System.out.println("NDCG@5: " + NDCG[1]);
-		System.out.println("NDCG@10: " + NDCG[2]);
-		System.out.println("Reciprocal rank: " + reciprocal);
-
 	}
 
 	private static double computePrecisionAndRecall(double RR) {
@@ -280,5 +321,5 @@ class Evaluator {
 		}
 		return standardDCGs;
 	}
-//test
+	// test
 }
