@@ -1,18 +1,16 @@
 package edu.nyu.cs.cs2580;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.File;
-import java.io.FileReader;
 import java.io.InputStreamReader;
-import java.io.BufferedReader;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Vector;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Scanner;
 
 class Evaluator {
@@ -39,14 +37,17 @@ class Evaluator {
 		readRelevanceJudgments(p, relevance_judgments, document_gain);
 		// now evaluate the results from stdin
 		evaluateStdin(relevance_judgments, document_gain);
-		storeResultInCSV(args[1]);
+//		storeResultInCSV(args[1]);
+		printResult();
 	}
 
+	/**
+	 * Used to store evaluator output, in order to run this method, we shall append a parameter through command as [ranker_name]**/
 	private static void storeResultInCSV(String ranker) {
 		String file = null;
 		if (ranker.equals("cosine"))
 			file = "hw1.3-vsm.tsv";
-		else if (ranker.equals("QL"))
+		else if (ranker.equalsIgnoreCase("QL"))
 			file = "hw1.3-ql.tsv";
 		else if (ranker.equals("phrase"))
 			file = "hw1.3-phrase.tsv";
@@ -69,6 +70,7 @@ class Evaluator {
 					recalls[2], fMeasure[0], fMeasure[1], fMeasure[2], precisionRecallPoint[0], precisionRecallPoint[1], precisionRecallPoint[2], precisionRecallPoint[3], precisionRecallPoint[4],
 					precisionRecallPoint[5], precisionRecallPoint[6], precisionRecallPoint[7], precisionRecallPoint[8], precisionRecallPoint[9], precisionRecallPoint[10], averagePrecision, NDCG[0],
 					NDCG[1], NDCG[2], reciprocal);
+			System.out.println(result);
 			bw.write(result);
 			bw.close();
 		} catch (FileNotFoundException e) {
@@ -79,7 +81,7 @@ class Evaluator {
 		printResult();
 	}
 	private static void printResult() {
-		System.out.println("Precision@1: " + precisions[0]);
+/*		System.out.println("Precision@1: " + precisions[0]);
 		System.out.println("Precision@5: " + precisions[1]);
 		System.out.println("Precision@10 :" + precisions[2]);
 		System.out.println("Recall@1: " + recalls[0]);
@@ -103,7 +105,13 @@ class Evaluator {
 		System.out.println("NDCG@1: " + NDCG[0]);
 		System.out.println("NDCG@5: " + NDCG[1]);
 		System.out.println("NDCG@10: " + NDCG[2]);
-		System.out.println("Reciprocal rank: " + reciprocal);
+		System.out.println("Reciprocal rank: " + reciprocal);*/
+		String result = String.format("%s\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f\t%-10f",
+				query, precisions[0], precisions[1], precisions[2], recalls[0], recalls[1],
+				recalls[2], fMeasure[0], fMeasure[1], fMeasure[2], precisionRecallPoint[0], precisionRecallPoint[1], precisionRecallPoint[2], precisionRecallPoint[3], precisionRecallPoint[4],
+				precisionRecallPoint[5], precisionRecallPoint[6], precisionRecallPoint[7], precisionRecallPoint[8], precisionRecallPoint[9], precisionRecallPoint[10], averagePrecision, NDCG[0],
+				NDCG[1], NDCG[2], reciprocal);
+		System.out.println(result);
 
 	}
 
@@ -156,8 +164,8 @@ class Evaluator {
 
 	public static void evaluateStdin(HashMap<String, HashMap<Integer, Double>> relevance_judgments, HashMap<String, HashMap<Integer, Double>> document_gain) {
 		// only consider one query per call
-		try {
 
+		try {
 			BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 			String line = null;
 			double RR = 0.0; // this represent all relevant file.
@@ -185,6 +193,7 @@ class Evaluator {
 					}
 				}
 
+
 				storeEachPoint(RR);
 				if (N == 1) {
 					standardDCGs = computeDCGS(document_gain, query);
@@ -196,17 +205,25 @@ class Evaluator {
 			averagePrecision = computePrecisionAndRecall(RR);
 			computeFAtK();
 
-			// System.out.println(Double.toString(RR/N));
+			 System.out.println(Double.toString(RR/N));
 		} catch (Exception e) {
 			System.err.println("Error:" + e.getMessage());
 		}
 	}
 
 	private static double computePrecisionAndRecall(double RR) {
+		if(RR == 0){
+			recalls[0] = 0;
+			recalls[1] = 0;
+			recalls[2] = 0;
+			averagePrecision = 0;
+			computtePrecisionRecallGraph(0, 0);
+			return averagePrecision;
+		}
 		double averagePrecision = 0.0;
 		for (int i = 0; i < points.size(); i++) {
 			if (i == 0) {
-				precisions[0] = points.get(i) / 1;
+				precisions[0] = points.get(i) / 1;	
 				recalls[0] = points.get(i) / RR;
 			} else if (i == 4) {
 				precisions[1] = points.get(i) / 5;
@@ -220,9 +237,12 @@ class Evaluator {
 			} else if (i > 0 && points.get(i) > points.get(i - 1)) {
 				averagePrecision += points.get(i) / (i + 1);
 			}
+			
 			computtePrecisionRecallGraph(points.get(i) / RR, points.get(i) / (i + 1));
+			
 		}
 		averagePrecision /= RR;
+		
 		return averagePrecision;
 	}
 
