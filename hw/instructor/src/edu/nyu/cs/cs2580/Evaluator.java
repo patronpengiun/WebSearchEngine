@@ -37,7 +37,7 @@ class Evaluator {
 		readRelevanceJudgments(p, relevance_judgments, document_gain);
 		// now evaluate the results from stdin
 		evaluateStdin(relevance_judgments, document_gain);
-		//storeResultInCSV(args[1]);
+		storeResultInCSV(args[1]);
 		printResult();
 	}
 
