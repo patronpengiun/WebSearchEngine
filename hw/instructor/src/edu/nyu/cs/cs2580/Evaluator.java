@@ -312,5 +312,4 @@ class Evaluator {
 		}
 		return standardDCGs;
 	}
-	// test
 }
