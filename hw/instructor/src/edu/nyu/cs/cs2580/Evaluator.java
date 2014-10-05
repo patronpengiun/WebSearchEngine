@@ -64,6 +64,7 @@ class Evaluator {
 //					+ "Precision at Recall 1.0,Average Precision,NDCG@1,NDCG@5,NDCG@10,Reciprocal Rank");
 //			bw.write(title);
 //			bw.newLine();
+//
 			String result = String.format("%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f",query, precisions[0], precisions[1], precisions[2], recalls[0], recalls[1],
 					recalls[2], fMeasure[0], fMeasure[1], fMeasure[2], precisionRecallPoint[0], precisionRecallPoint[1], precisionRecallPoint[2], precisionRecallPoint[3], precisionRecallPoint[4],
 					precisionRecallPoint[5], precisionRecallPoint[6], precisionRecallPoint[7], precisionRecallPoint[8], precisionRecallPoint[9], precisionRecallPoint[10], averagePrecision, NDCG[0],
