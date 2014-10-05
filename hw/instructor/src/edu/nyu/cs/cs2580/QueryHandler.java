@@ -29,7 +29,8 @@ class QueryHandler implements HttpHandler {
     Map<String, String> map = new HashMap<String, String>();  
     for (String param : params){  
       String name = param.split("=")[0];  
-      String value = java.net.URLDecoder.decode(param.split("=")[1]);  
+      @SuppressWarnings("deprecation")
+	String value = java.net.URLDecoder.decode(param.split("=")[1]);  
       map.put(name, value);  
     }
     return map;  
@@ -64,7 +65,7 @@ class QueryHandler implements HttpHandler {
             // implementation of the Ranker class.
             if (ranker_type.equals("cosine")){
             	_ranker = new VsmRanker(_ranker._index);
-            } else if (ranker_type.equals("QL")){
+            } else if (ranker_type.equalsIgnoreCase("QL")){
             	_ranker = new QLRanker(_ranker._index);
             } else if (ranker_type.equals("phrase")){
             	_ranker = new PhraseRanker(_ranker._index);
