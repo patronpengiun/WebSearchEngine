@@ -44,13 +44,13 @@ class Evaluator {
 
 	private static void storeResultInCSV(String ranker) {
 		String file = null;
-		if (ranker.equals("vsm"))
+		if (ranker.equals("cosine"))
 			file = "hw1.3-vsm.tsv";
 		else if (ranker.equals("QL"))
 			file = "hw1.3-ql.tsv";
 		else if (ranker.equals("phrase"))
 			file = "hw1.3-phrase.tsv";
-		else if (ranker.equals("cosine"))
+		else if (ranker.equals("numviews"))
 			file = "hw1.3-numviews.tsv";
 		else if (ranker.equals("linear"))
 			file = "hw1.3-linear.tsv";
