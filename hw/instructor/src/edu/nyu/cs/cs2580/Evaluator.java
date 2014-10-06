@@ -3,6 +3,7 @@ package edu.nyu.cs.cs2580;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -37,41 +38,6 @@ class Evaluator {
 		readRelevanceJudgments(p, relevance_judgments, document_gain);
 		// now evaluate the results from stdin
 		evaluateStdin(relevance_judgments, document_gain);
-		storeResultInCSV(args[1]);
-		printResult();
-	}
-
-	/**
-	 * Used to store evaluator output, in order to run this method, we shall append a parameter through command as [ranker_name]**/
-	private static void storeResultInCSV(String ranker) {
-
-		String file = null;
-		if (ranker.equals("cosine"))
-			file = "hw1.3-vsm.tsv";
-		else if (ranker.equalsIgnoreCase("QL"))
-			file = "hw1.3-ql.tsv";
-		else if (ranker.equals("phrase"))
-			file = "hw1.3-phrase.tsv";
-		else if (ranker.equals("numviews"))
-			file = "hw1.3-numviews.tsv";
-		else if (ranker.equals("linear"))
-			file = "hw1.3-linear.tsv";
-		try {
-			File csv = new File(file);
-			BufferedWriter bw = new BufferedWriter(new FileWriter(csv, true));
-			bw.newLine();
-			String result = String.format("%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f",query, precisions[0], precisions[1], precisions[2], recalls[0], recalls[1],
-					recalls[2], fMeasure[0], fMeasure[1], fMeasure[2], precisionRecallPoint[0], precisionRecallPoint[1], precisionRecallPoint[2], precisionRecallPoint[3], precisionRecallPoint[4],
-					precisionRecallPoint[5], precisionRecallPoint[6], precisionRecallPoint[7], precisionRecallPoint[8], precisionRecallPoint[9], precisionRecallPoint[10], averagePrecision, NDCG[0],
-					NDCG[1], NDCG[2], reciprocal);
-			System.out.println(result);
-			bw.write(result);
-			bw.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 		printResult();
 	}
 
@@ -134,8 +100,7 @@ class Evaluator {
 
 	public static void evaluateStdin(HashMap<String, HashMap<Integer, Double>> relevance_judgments, HashMap<String, HashMap<Integer, Double>> document_gain) throws NumberFormatException, IOException {
 		// only consider one query per call
-
-		
+		try {
 			BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 			String line = null;
 			double RR = 0.0; // this represent all relevant file.
@@ -163,7 +128,6 @@ class Evaluator {
 					}
 				}
 
-
 				storeEachPoint(RR);
 				if (N == 1) {
 					standardDCGs = computeDCGS(document_gain, query);
@@ -174,11 +138,10 @@ class Evaluator {
 			// for last query
 			averagePrecision = computePrecisionAndRecall(RR);
 			computeFAtK();
-
-			 System.out.println(Double.toString(RR/N));
-	
-//			System.err.println("Error:" + e.getMessage());
-		
+		}
+		catch (Exception e){
+			System.err.println("Error:" + e.getClass());
+		}
 	}
 
 	private static double computePrecisionAndRecall(double RR) {
@@ -247,7 +210,9 @@ class Evaluator {
 
 		double standardDCG = 0;
 		if (n == 1 || n == 5 || n == 10) {
-			 if (n > standardDCGs.size())
+			if (0 == standardDCGs.size())
+				standardDCG = 0;
+			else if (n > standardDCGs.size())
 				standardDCG = standardDCGs.get(standardDCGs.size() - 1);
 			else
 				standardDCG = standardDCGs.get(n - 1);
