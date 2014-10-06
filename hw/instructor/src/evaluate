@@ -1,0 +1,19 @@
+#!/bin/bash
+
+##########################################################################
+# This shell script evaluates the queries of five rankers.
+##########################################################################
+
+queries=( bing data+mining google salsa web+search )
+rankers=( cosine ql phrase linear numviews )
+outputFiles=( vsm ql phrase linear numviews )
+# for i in "${rankers[@]}"
+for ((i=0; i<${#rankers[@]}; i++))
+do
+  for j in "${queries[@]}"
+  do
+    curl "http://localhost:25803/search?query=$j&ranker=${rankers[$i]}&format=text" | java edu/nyu/cs/cs2580/Evaluator ../data/qrels.tsv >> hw1.3-${outputFiles[$i]}.tsv
+  done
+done
+echo "Evaluation Completed!"
+exit 0

@@ -1,10 +1,7 @@
 package edu.nyu.cs.cs2580;
 
-import java.io.BufferedWriter;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.util.Date;
 
 public class LogService {

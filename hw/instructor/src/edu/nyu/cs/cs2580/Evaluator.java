@@ -1,12 +1,7 @@
 package edu.nyu.cs.cs2580;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -113,8 +108,6 @@ class Evaluator {
 				Scanner s = new Scanner(line).useDelimiter("\t");
 				query = s.next();
 				int did = Integer.parseInt(s.next());
-				String title = s.next();
-				double rel = Double.parseDouble(s.next());
 				N++;
 				if (relevance_judgments.containsKey(query) == false) {
 					throw new IOException("query not found");
