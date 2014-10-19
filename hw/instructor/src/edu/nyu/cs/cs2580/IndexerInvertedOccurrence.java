@@ -17,6 +17,8 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.Vector;
 
+import org.jsoup.Jsoup;
+
 import edu.nyu.cs.cs2580.SearchEngine.Options;
 
 /**
@@ -44,6 +46,9 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 
   // Stores all Document in memory.
   private Vector<DocumentIndexed> _documents = new Vector<DocumentIndexed>();
+  
+  //Each element in the array is the term frequency of the terms that appears in a particular document
+  private ArrayList<HashMap<Integer,Integer>> _termFrequencyMapArray = new ArrayList<HashMap<Integer,Integer>>();
 
   private class Posting implements Serializable {
 	  public int docid;
@@ -79,18 +84,17 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
           File corpusFiles = new File(corpus);
           
           // the parser is used to parse html into plain text
-          ParseFileHelper parser = new ParseFileHelper();
+          Stemmer stemmer = new Stemmer();
+          
           for (final File file : corpusFiles.listFiles())
           {
               System.out.println(file.getName());
-              String text = parser.parseHtmlText(file);
-              int docid = _documents.size();
-              DocumentIndexed document = new DocumentIndexed(docid);
-              document.setTitle(parser.getDocTitle());
-              document.setUrl(url);
-              _documents.add(document);
+                           
               
-              processDocument(text); 
+                  processDocument(file, stemmer); 
+              
+              
+              
           }
       } catch (Exception e) {
           e.printStackTrace();
@@ -109,27 +113,81 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
       writer.close();	  
   }
 
-  private void processDocument(String text) {
+  private void processDocument(File file, Stemmer stemmer) {
+		  
+	  int docid = _documents.size();
+      DocumentIndexed doc = new DocumentIndexed(docid);
+      doc.setUrl(Integer.toString(docid));
+      _documents.add(doc);
+      _numDocs++;
+      
+      _termFrequencyMapArray.add(new HashMap<Integer,Integer>());
+	  HashMap<Integer,Integer> _termFrequencyMap = _termFrequencyMapArray.get(_termFrequencyMapArray.size() - 1);
+      
+      
+	  String text = "";										// the text of parsed document
+      try {
+    	  org.jsoup.nodes.Document document = Jsoup.parse(file, null);
+    	  doc.setTitle(document.title());
+		  _documents.add(doc);
+		  text = document.body().text();
+		  document = null;		    	  
+      } catch (IOException e) {
+		  System.err.println(e.getMessage());
+	  }
+	  
+	  Set<Integer> uniq_set = new HashSet<Integer>();	// the uniq term set for this document
+	  Scanner[] sr = new Scanner[2];
+	  sr[0] = new Scanner(text).useDelimiter("\\s+");
+	  sr[1] = new Scanner(doc.getTitle()).useDelimiter("\\s+");
 	
-	Set<Integer> uniq_set = new HashSet<Integer>();	// the uniq term set for this document
-	Scanner sc = new Scanner(text);
-	
-	while(sc.hasNext()) {
-		int offset = 0;								// offset of the token
-		String token = sc.next();
-		if (_dictionary.containsKey(token)) {
-			
-		} else {
-			int idx = _dictionary.size();
-			_dictionary.put(token, idx);
-			Posting posting = new Posting(_documents.size());
-			posting.oc.add(offset);
-			ArrayList<Posting> postings = new ArrayList<Posting>();
-			postings.add(posting);
-			_postingList.put(idx, postings);
-		}
-		++offset;
-	}	
+	  for (Scanner scanner: sr) {
+		  while(scanner.hasNext()) {
+			  int offset = 1;								// offset of the token
+			  String token = stem(scanner.next(),stemmer);	// stem each term
+			  if (!token.equals("")) {
+				  int idx;									// integer representation of the term
+				  
+				  if (_dictionary.containsKey(token)) {		// if the term appears in corpus
+					  idx = _dictionary.get(token);
+					  if (uniq_set.contains(token)) {						  
+						  _postingList.get(idx).get(docid - 1).oc.add(offset);						  
+						  _termFrequencyMap.put(idx, _termFrequencyMap.get(idx)+1);						  
+					  } else {		// if the this term first appears in this document
+						  uniq_set.add(idx);
+						  
+						  Posting posting = new Posting(docid);
+						  posting.oc.add(offset);						  
+						  					  
+						  _postingList.get(idx).get(docid - 1).oc.add(offset);
+						  _postingList.get(idx).add(posting);
+						  
+						  _termFrequencyMap.put(idx,1);
+						  _termDocFrequency.put(idx,_termDocFrequency.get(idx)+1);
+					  }	
+				  } else {
+					idx = _dictionary.size();
+					_dictionary.put(token, idx);
+					uniq_set.add(idx);
+					
+					Posting posting = new Posting(docid);
+					posting.oc.add(offset);
+					
+					// the list of positions of term occurs in this document
+				    ArrayList<Posting> postings = new ArrayList<Posting>();
+					postings.add(posting);					
+					_postingList.put(idx, postings);
+					
+					_termFrequencyMap.put(idx,1);
+					_termDocFrequency.put(idx,1);
+					_termCorpusFrequency.put(idx, 1);
+				  }
+			  }
+			  
+			  ++offset;
+		  }
+		  scanner.close();
+	  }
   }
 
 @Override
@@ -171,5 +229,12 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
   public int documentTermFrequency(String term, String url) {
     SearchEngine.Check(false, "Not implemented!");
     return 0;
+  }
+  
+  private String stem(String origin, Stemmer stemmer) {
+	  String lower = origin.toLowerCase();
+      stemmer.add(lower.toCharArray(), lower.length());
+      stemmer.stem();
+      return stemmer.toString();
   }
 }
