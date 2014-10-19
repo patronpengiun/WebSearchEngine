@@ -89,12 +89,7 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
           for (final File file : corpusFiles.listFiles())
           {
               System.out.println(file.getName());
-                           
-              
                   processDocument(file, stemmer); 
-              
-              
-              
           }
       } catch (Exception e) {
           e.printStackTrace();
@@ -151,7 +146,7 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 				  if (_dictionary.containsKey(token)) {		// if the term appears in corpus
 					  idx = _dictionary.get(token);
 					  if (uniq_set.contains(token)) {						  
-						  _postingList.get(idx).get(docid - 1).oc.add(offset);						  
+						  _postingList.get(idx).get(docid).oc.add(offset);						  
 						  _termFrequencyMap.put(idx, _termFrequencyMap.get(idx)+1);						  
 					  } else {		// if the this term first appears in this document
 						  uniq_set.add(idx);
@@ -159,7 +154,6 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 						  Posting posting = new Posting(docid);
 						  posting.oc.add(offset);						  
 						  					  
-						  _postingList.get(idx).get(docid - 1).oc.add(offset);
 						  _postingList.get(idx).add(posting);
 						  
 						  _termFrequencyMap.put(idx,1);

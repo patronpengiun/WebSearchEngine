@@ -41,11 +41,12 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
   // the number of times the term appears in the corpus.
   private HashMap<Integer,Integer> _termCorpusFrequency = new HashMap<Integer,Integer>();
   
-  // Each element in the array is the term frequency of the terms that appears in a particular document
-  private ArrayList<HashMap<Integer,Integer>> _termFrequencyMapArray = new ArrayList<HashMap<Integer,Integer>>();
+  // key is the document id
+  // value is the term frequency of the terms that appears in that document
+  private HashMap<Integer,HashMap<Integer,Integer>> _termFrequencyMapArray = new HashMap<Integer,HashMap<Integer,Integer>>();
   
-  // The postings lists
-  private ArrayList<ArrayList<Integer>> _postingLists = new ArrayList<ArrayList<Integer>>();
+  // The postings lists, key is term Id, value is posting list
+  private HashMap<Integer,ArrayList<Integer>> _postingLists = new HashMap<Integer,ArrayList<Integer>>();
   
   public IndexerInvertedDoconly(Options options) {
     super(options);
@@ -85,41 +86,49 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 		  
 	  String termIndexFile = _options._indexPrefix + "/invertedOnlyTerm.idx";
 	  writer = new ObjectOutputStream(new FileOutputStream(termIndexFile));
+	  // store the number of pieces that has been dumped to disk
+	  _dictionary.put("",num_pieces);
 	  writer.writeObject(_dictionary);
 	  writer.close();
-	  
-	  /*String indexFile = _options._indexPrefix + "/invertedDocOnly.idx";
-	  System.out.println("Store index to: " + indexFile);
-	  ObjectOutputStream writer =
-	      new ObjectOutputStream(new FileOutputStream(indexFile));
-	  writer.writeObject(this);
-	  writer.close();*/
   }
 
   @Override
   public void loadIndex() throws IOException, ClassNotFoundException {
-	  String indexFile = _options._indexPrefix + "/invertedDocOnly.idx";
-	  System.out.println("Load index from: " + indexFile);
-	  
+	  System.out.println("loading indexedDocVector");
+	  String documentIndexFile = _options._indexPrefix + "/invertedOnlyDoc.idx";
 	  ObjectInputStream reader =
-	      new ObjectInputStream(new FileInputStream(indexFile));
-	  IndexerInvertedDoconly loaded = (IndexerInvertedDoconly) reader.readObject();
+		  new ObjectInputStream(new FileInputStream(documentIndexFile));
+	  this._documents = (Vector<edu.nyu.cs.cs2580.Document>)reader.readObject();
+	  reader.close();
 	  
-	  this._documents = loaded._documents;
+	  System.out.println("loading dictionary");
+	  String termIndexFile = _options._indexPrefix + "/invertedOnlyTerm.idx";
+	  reader = new ObjectInputStream(new FileInputStream(termIndexFile));
+	  this._dictionary = (Map<String, Integer>)reader.readObject();
+	  reader.close();
+	  
+	  int num_pieces = _dictionary.get("");
+	  _dictionary.remove("");
+	  
+	  for (int i=1;i<=num_pieces;i++) {
+		  System.out.println("loading piece" + Integer.toString(i));
+		  String filePath = _options._indexPrefix + "/invertedDocOnly_" + Integer.toString(num_pieces) + ".idx";
+		  reader = new ObjectInputStream(new FileInputStream(filePath));
+		  IndexerInvertedDoconly load = (IndexerInvertedDoconly)reader.readObject();
+		  merge(load);
+		  reader.close();
+		  load = null;
+		  System.gc();
+	  }
+	  
 	  // Compute numDocs and totalTermFrequency b/c Indexer is not serializable.
 	  this._numDocs = _documents.size();
-	  for (Integer freq : loaded._termCorpusFrequency) {
+	  for (Integer freq : _termCorpusFrequency.values()) {
 		  this._totalTermFrequency += freq;
 	  }
 	  
-	  this.cachedPtrArray = new int[loaded._dictionary.size()];
+	  this.cachedPtrArray = new int[_dictionary.size()];
 	  Arrays.fill(cachedPtrArray,0);
-	  this._dictionary = loaded._dictionary;
-	  this._termCorpusFrequency = loaded._termCorpusFrequency;
-	  this._termDocFrequency = loaded._termDocFrequency;
-	  this._termFrequencyMapArray = loaded._termFrequencyMapArray;
-	  this._postingLists = loaded._postingLists;
-	  reader.close();
   }
 
   @Override
@@ -218,8 +227,8 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  int doc_id = _documents.size();
 	  DocumentIndexed doc = new DocumentIndexed(doc_id);
 	  doc.setUrl(Integer.toString(doc_id));
-	  _termFrequencyMapArray.add(new HashMap<Integer,Integer>());
-	  HashMap<Integer,Integer> _termFrequencyMap = _termFrequencyMapArray.get(_termFrequencyMapArray.size() - 1);
+	  _termFrequencyMapArray.put(doc_id,new HashMap<Integer,Integer>());
+	  HashMap<Integer,Integer> _termFrequencyMap = _termFrequencyMapArray.get(doc_id);
 	  
 	  try {
 		  org.jsoup.nodes.Document document = Jsoup.parse(new File(path), null);
@@ -244,11 +253,23 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 							  _termFrequencyMap.put(idx, _termFrequencyMap.get(idx)+1);
 						  } else {
 							  uniq_set.add(idx);
-							  _postingLists.get(idx).add(doc_id);
+							  if (_postingLists.get(idx) == null) {
+								  ArrayList<Integer> newPostingList = new ArrayList<Integer>();
+							  	  newPostingList.add(doc_id);
+							  	  _postingLists.put(idx, newPostingList);
+							  }
+							  else
+								  _postingLists.get(idx).add(doc_id);
 							  _termFrequencyMap.put(idx,1);
-							  _termDocFrequency.put(idx,_termDocFrequency.get(idx)+1);
+							  if (_termDocFrequency.get(idx) == null) 
+								  _termDocFrequency.put(idx, 1);
+							  else 
+								  _termDocFrequency.put(idx,_termDocFrequency.get(idx)+1);
 						  }
-						  _termCorpusFrequency.put(idx, _termCorpusFrequency.get(idx)+1);
+						  if (_termCorpusFrequency.get(idx) == null)
+							  _termCorpusFrequency.put(idx, 1);
+						  else 
+							  _termCorpusFrequency.put(idx, _termCorpusFrequency.get(idx)+1);
 					  }
 					  else {
 						  idx = _dictionary.size();
@@ -256,7 +277,7 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 						  uniq_set.add(idx);
 						  ArrayList<Integer> newPostingList = new ArrayList<Integer>();
 						  newPostingList.add(doc_id);
-						  _postingLists.add(newPostingList);
+						  _postingLists.put(idx,newPostingList);
 						  _termFrequencyMap.put(idx,1);
 						  _termDocFrequency.put(idx,1);
 						  _termCorpusFrequency.put(idx, 1);
@@ -272,7 +293,7 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
   }
   
   private void dump(int n) throws IOException {
-	  String indexFile = _options._indexPrefix + "/invertedDocOnly_" + Integer.toString(n+1) + ".idx";
+	  String indexFile = _options._indexPrefix + "/invertedDocOnly_" + Integer.toString(n) + ".idx";
 	  System.out.println("Store index piece " + Integer.toString(n) + " to: " + indexFile);
 	  ObjectOutputStream writer =
 	      new ObjectOutputStream(new FileOutputStream(indexFile));
@@ -280,10 +301,42 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  writer.close();
 	  _termDocFrequency.clear();
 	  _termCorpusFrequency.clear();
-	  _documents.clear();
 	  _termFrequencyMapArray.clear();
 	  _postingLists.clear();
 	  System.gc();
+  }
+  
+  private void merge (IndexerInvertedDoconly piece) {
+	  for (Map.Entry<Integer,Integer> e: piece._termDocFrequency.entrySet()) {
+		  int termId = e.getKey();
+		  int count = e.getValue();
+		  if (this._termDocFrequency.get(termId) == null) 
+			  this._termDocFrequency.put(termId, count);
+		  else 
+			  this._termDocFrequency.put(termId,_termDocFrequency.get(termId)+count);
+	  }
+	  
+	  for (Map.Entry<Integer,Integer> e: piece._termCorpusFrequency.entrySet()) {
+		  int termId = e.getKey();
+		  int count = e.getValue();
+		  if (this._termCorpusFrequency.get(termId) == null) 
+			  this._termCorpusFrequency.put(termId, count);
+		  else 
+			  this._termCorpusFrequency.put(termId,_termCorpusFrequency.get(termId)+count);
+	  }
+	  
+	  for (Map.Entry<Integer, HashMap<Integer,Integer>> e: piece._termFrequencyMapArray.entrySet()) {
+		  this._termFrequencyMapArray.put(e.getKey(), e.getValue());
+	  }
+	  
+	  for (Map.Entry<Integer, ArrayList<Integer>> e: piece._postingLists.entrySet()) {
+		  int termId = e.getKey();
+		  ArrayList<Integer> list = e.getValue();
+		  if (this._postingLists.get(termId) == null)
+			  this._postingLists.put(termId, list);
+		  else
+			  this._postingLists.get(termId).addAll(list);
+	  }
   }
   
   private String stem(String origin, Stemmer stemmer) {
