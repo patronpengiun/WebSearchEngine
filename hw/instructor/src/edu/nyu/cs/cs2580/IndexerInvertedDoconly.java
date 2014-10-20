@@ -1,8 +1,12 @@
 package edu.nyu.cs.cs2580;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -13,6 +17,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.Vector;
 
 import org.jsoup.Jsoup;
@@ -28,25 +33,13 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
   private static final long serialVersionUID = 165377250909L;
   
   // Stores all document in memory
-  transient private Vector<edu.nyu.cs.cs2580.Document> _documents = new Vector<edu.nyu.cs.cs2580.Document>();
+  private Vector<edu.nyu.cs.cs2580.Document> _documents = new Vector<edu.nyu.cs.cs2580.Document>();
 	  
   // Maps each term to their integer representation
-  transient private Map<String, Integer> _dictionary = new HashMap<String, Integer>();
-	  
-  // Term document frequency, key is the integer representation of the term and
-  // value is the number of documents the term appears in.
-  private HashMap<Integer,Integer> _termDocFrequency = new HashMap<Integer,Integer>();
-	  
-  // Term frequency, key is the integer representation of the term and value is
-  // the number of times the term appears in the corpus.
-  private HashMap<Integer,Integer> _termCorpusFrequency = new HashMap<Integer,Integer>();
+  private Map<String, Integer> _dictionary = new HashMap<String, Integer>();
   
-  // key is the document id
-  // value is the term frequency of the terms that appears in that document
-  private HashMap<Integer,HashMap<Integer,Integer>> _termFrequencyMapArray = new HashMap<Integer,HashMap<Integer,Integer>>();
-  
-  // The postings lists, key is term Id, value is posting list
-  private HashMap<Integer,ArrayList<Integer>> _postingLists = new HashMap<Integer,ArrayList<Integer>>();
+  // All the information about a token
+  private HashMap<Integer,TokenInfo> tmap = new HashMap<Integer,TokenInfo>();
   
   public IndexerInvertedDoconly(Options options) {
     super(options);
@@ -78,16 +71,19 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  num_pieces++;
 	  dump(num_pieces);
 	  
+	  System.out.println("merging pieces");
+	  merge(num_pieces);
+	  
+	  System.out.println("store documents idx");
 	  String documentIndexFile = _options._indexPrefix + "/invertedOnlyDoc.idx";
 	  ObjectOutputStream writer =
 		  new ObjectOutputStream(new FileOutputStream(documentIndexFile));
 	  writer.writeObject(_documents);
 	  writer.close();
 		  
+	  System.out.println("store dictionary idx");
 	  String termIndexFile = _options._indexPrefix + "/invertedOnlyTerm.idx";
 	  writer = new ObjectOutputStream(new FileOutputStream(termIndexFile));
-	  // store the number of pieces that has been dumped to disk
-	  _dictionary.put("",num_pieces);
 	  writer.writeObject(_dictionary);
 	  writer.close();
   }
@@ -107,25 +103,19 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  this._dictionary = (Map<String, Integer>)reader.readObject();
 	  reader.close();
 	  
-	  int num_pieces = _dictionary.get("");
-	  _dictionary.remove("");
-	  
-	  for (int i=1;i<=num_pieces;i++) {
-		  System.out.println("loading piece" + Integer.toString(i));
-		  String filePath = _options._indexPrefix + "/invertedDocOnly_" + Integer.toString(num_pieces) + ".idx";
-		  reader = new ObjectInputStream(new FileInputStream(filePath));
-		  IndexerInvertedDoconly load = (IndexerInvertedDoconly)reader.readObject();
-		  merge(load);
-		  reader.close();
-		  load = null;
-		  System.gc();
+	  /*System.out.println("loading postings lists");
+	  String mergedFile = _options._indexPrefix + "/invertedDocOnlyMerged.idx";
+	  BufferedReader listReader = new BufferedReader(new FileReader(mergedFile));
+	  String line;
+	  int count=0;
+	  while ((line = listReader.readLine()) != null) {
+		  System.out.println(count++);
+		  tmap.put(getId(line),getInfo(line));
 	  }
+	  listReader.close();*/
 	  
 	  // Compute numDocs and totalTermFrequency b/c Indexer is not serializable.
 	  this._numDocs = _documents.size();
-	  for (Integer freq : _termCorpusFrequency.values()) {
-		  this._totalTermFrequency += freq;
-	  }
 	  
 	  this.cachedPtrArray = new int[_dictionary.size()];
 	  Arrays.fill(cachedPtrArray,0);
@@ -170,21 +160,21 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 		  return null;
 	  
 	  int cachedPtr = cachedPtrArray[idx];
-	  ArrayList<Integer> pl = _postingLists.get(idx);
-	  if (pl.get(pl.size()-1) <= docid)
+	  ArrayList<IntPair> pl = tmap.get(idx).postingList;
+	  if (pl.get(pl.size()-1).first <= docid)
 		  return null;
 	  
-	  if (pl.get(0) > docid) {
+	  if (pl.get(0).first > docid) {
 		  cachedPtrArray[idx] = 0;
-		  return pl.get(0);
+		  return pl.get(0).first;
 	  }
 	  
-	  if (cachedPtr > 0 && pl.get(cachedPtr-1) > docid)
+	  if (cachedPtr > 0 && pl.get(cachedPtr-1).first > docid)
 		  cachedPtr = 0;
-	  while (pl.get(cachedPtr) <= docid)
+	  while (pl.get(cachedPtr).first <= docid)
 		  cachedPtr++;
 	  cachedPtrArray[idx] = cachedPtr;
-	  return pl.get(cachedPtr);
+	  return pl.get(cachedPtr).first;
   }
 
   @Override
@@ -193,7 +183,7 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  if (null == idx)
 		  return 0;
 	  else
-		  return _termDocFrequency.get(idx);
+		  return tmap.get(idx).corpusFreq;
   }
 
   @Override
@@ -202,7 +192,7 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  if (null == idx)
 		  return 0;
 	  else
-		  return _termCorpusFrequency.get(idx);
+		  return tmap.get(idx).docFreq;
   }
 
   @Override
@@ -211,24 +201,10 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
     return 0;
   }
   
-  // get the term frequency of a term in the document with the docid
-  public int documentTermFrequency(String term, Integer docid) {
-	  Integer idx = _dictionary.get(term);
-	  if (null == idx)
-		  return 0;
-	  else {
-		  //if (docid < _termFrequencyMapArray.size())
-			  //return _termFrequencyMapArray.get(docid).get(idx);
-	  }
-	  return 0;
-  }
-  
   private void constructSingleDocument(String path, Stemmer stemmer) {
 	  int doc_id = _documents.size();
 	  DocumentIndexed doc = new DocumentIndexed(doc_id);
 	  doc.setUrl(Integer.toString(doc_id));
-	  _termFrequencyMapArray.put(doc_id,new HashMap<Integer,Integer>());
-	  HashMap<Integer,Integer> _termFrequencyMap = _termFrequencyMapArray.get(doc_id);
 	  
 	  try {
 		  org.jsoup.nodes.Document document = Jsoup.parse(new File(path), null);
@@ -246,45 +222,28 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 				  if (token.equals(""))
 					  continue;
 				  else {
-					  int idx; // integer representation of the term
+					  int idx;
 					  if (_dictionary.containsKey(token)) {
 						  idx = _dictionary.get(token);
-						  if (uniq_set.contains(idx)) {
-							  _termFrequencyMap.put(idx, _termFrequencyMap.get(idx)+1);
-						  } else {
-							  uniq_set.add(idx);
-							  if (_postingLists.get(idx) == null) {
-								  ArrayList<Integer> newPostingList = new ArrayList<Integer>();
-							  	  newPostingList.add(doc_id);
-							  	  _postingLists.put(idx, newPostingList);
-							  }
-							  else
-								  _postingLists.get(idx).add(doc_id);
-							  _termFrequencyMap.put(idx,1);
-							  if (_termDocFrequency.get(idx) == null) 
-								  _termDocFrequency.put(idx, 1);
-							  else 
-								  _termDocFrequency.put(idx,_termDocFrequency.get(idx)+1);
-						  }
-						  if (_termCorpusFrequency.get(idx) == null)
-							  _termCorpusFrequency.put(idx, 1);
-						  else 
-							  _termCorpusFrequency.put(idx, _termCorpusFrequency.get(idx)+1);
-					  }
-					  else {
+					  } else {
 						  idx = _dictionary.size();
 						  _dictionary.put(token, idx);
-						  uniq_set.add(idx);
-						  ArrayList<Integer> newPostingList = new ArrayList<Integer>();
-						  newPostingList.add(doc_id);
-						  _postingLists.put(idx,newPostingList);
-						  _termFrequencyMap.put(idx,1);
-						  _termDocFrequency.put(idx,1);
-						  _termCorpusFrequency.put(idx, 1);
 					  }
+					  uniq_set.add(idx);
+					  if (tmap.get(idx) == null)
+						  tmap.put(idx, new TokenInfo(doc_id));
+					  tmap.get(idx).corpusFreq += 1;
+					  ArrayList<IntPair> plist = tmap.get(idx).postingList;
+					  if (plist.get(plist.size()-1).first == doc_id)
+						  plist.get(plist.size()-1).second += 1;
+					  else
+						  plist.add(new IntPair(doc_id,1));
 				  }
 			  }
 			  scanner.close();
+		  }
+		  for (int tid: uniq_set) {
+			  tmap.get(tid).docFreq += 1;
 		  }
 	  }
 	  catch (IOException e) {
@@ -295,48 +254,104 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
   private void dump(int n) throws IOException {
 	  String indexFile = _options._indexPrefix + "/invertedDocOnly_" + Integer.toString(n) + ".idx";
 	  System.out.println("Store index piece " + Integer.toString(n) + " to: " + indexFile);
-	  ObjectOutputStream writer =
-	      new ObjectOutputStream(new FileOutputStream(indexFile));
-	  writer.writeObject(this);
+	  BufferedWriter writer = new BufferedWriter(new FileWriter(indexFile));
+	  Integer[] keys = tmap.keySet().toArray(new Integer[tmap.keySet().size()]);
+	  Arrays.sort(keys);
+	  for (int key: keys) {
+		  TokenInfo info = tmap.get(key);
+		  writer.write(key + " " + info.corpusFreq + " " + info.docFreq);
+		  for (IntPair pair: info.postingList)
+			  writer.write(" " + pair.first + "," + pair.second);
+		  writer.newLine();
+	  }
+	  tmap.clear();
 	  writer.close();
-	  _termDocFrequency.clear();
-	  _termCorpusFrequency.clear();
-	  _termFrequencyMapArray.clear();
-	  _postingLists.clear();
 	  System.gc();
   }
   
-  private void merge (IndexerInvertedDoconly piece) {
-	  for (Map.Entry<Integer,Integer> e: piece._termDocFrequency.entrySet()) {
-		  int termId = e.getKey();
-		  int count = e.getValue();
-		  if (this._termDocFrequency.get(termId) == null) 
-			  this._termDocFrequency.put(termId, count);
-		  else 
-			  this._termDocFrequency.put(termId,_termDocFrequency.get(termId)+count);
+  private void merge (int num) throws IOException{
+	  BufferedReader[] readers= new BufferedReader[num];
+	  for (int i=1;i<=num;i++) {
+		  String partialFile = _options._indexPrefix + "/invertedDocOnly_" + Integer.toString(i) + ".idx";
+		  BufferedReader reader = new BufferedReader(new FileReader(partialFile));
+		  readers[i-1] = reader;
 	  }
 	  
-	  for (Map.Entry<Integer,Integer> e: piece._termCorpusFrequency.entrySet()) {
-		  int termId = e.getKey();
-		  int count = e.getValue();
-		  if (this._termCorpusFrequency.get(termId) == null) 
-			  this._termCorpusFrequency.put(termId, count);
-		  else 
-			  this._termCorpusFrequency.put(termId,_termCorpusFrequency.get(termId)+count);
-	  }
+	  String mergedFile = _options._indexPrefix + "/invertedDocOnlyMerged.idx";
+	  BufferedWriter writer = new BufferedWriter(new FileWriter(mergedFile));
 	  
-	  for (Map.Entry<Integer, HashMap<Integer,Integer>> e: piece._termFrequencyMapArray.entrySet()) {
-		  this._termFrequencyMapArray.put(e.getKey(), e.getValue());
-	  }
+	  boolean[] toMove = new boolean[num];
+	  Arrays.fill(toMove, true);
+	  int min_id = Integer.MAX_VALUE;
+	  int[] ids = new int[num];
+	  TokenInfo[] infos = new TokenInfo[num];
 	  
-	  for (Map.Entry<Integer, ArrayList<Integer>> e: piece._postingLists.entrySet()) {
-		  int termId = e.getKey();
-		  ArrayList<Integer> list = e.getValue();
-		  if (this._postingLists.get(termId) == null)
-			  this._postingLists.put(termId, list);
-		  else
-			  this._postingLists.get(termId).addAll(list);
+	  while(true) {
+		  min_id = Integer.MAX_VALUE;
+		  for (int i=0;i<num;i++) {
+			  if (toMove[i]) {
+				  String line = readers[i].readLine();
+				  if (line == null) {
+					  ids[i] = Integer.MAX_VALUE;
+					  infos[i] = null;
+				  } else {
+					  ids[i] = getId(line);
+					  infos[i] = getInfo(line);
+				  }
+				  toMove[i] = false;
+			  }
+			  if (ids[i] < min_id)
+				  min_id = ids[i];
+		  }
+		  if (min_id == Integer.MAX_VALUE)
+			  break;
+		  ArrayList<TokenInfo> toMerge = new ArrayList<TokenInfo>();
+		  for (int i=0;i<num;i++) {
+			  if (ids[i] == min_id) {
+				  toMerge.add(infos[i]);
+				  toMove[i] = true;
+			  }
+		  }
+		  writeToIndex(min_id,toMerge,writer);
 	  }
+	  for (BufferedReader r: readers)
+		  r.close();
+	  writer.close();
+  }
+  
+  private int getId(String line) {
+	  Scanner s = new Scanner(line);
+	  return Integer.parseInt(s.next());
+  }
+  
+  private TokenInfo getInfo(String line) {
+	  TokenInfo info = new TokenInfo();
+	  Scanner s = new Scanner(line);
+	  s.next();
+	  info.corpusFreq = Integer.parseInt(s.next());
+	  info.docFreq = Integer.parseInt(s.next());
+	  info.postingList = new ArrayList<IntPair>();
+	  while (s.hasNext()) {
+		  String[] e = s.next().split(",");
+		  info.postingList.add(new IntPair(Integer.parseInt(e[0]),Integer.parseInt(e[1])));
+	  }
+	  return info;
+  }
+  
+  private void writeToIndex(int termId,ArrayList<TokenInfo> list,BufferedWriter writer) throws IOException{
+	  TokenInfo info = new TokenInfo();
+	  info.corpusFreq = 0;
+	  info.docFreq = 0;
+	  info.postingList = new ArrayList<IntPair>();
+	  for (TokenInfo i: list) {
+		  info.corpusFreq += i.corpusFreq;
+		  info.docFreq += i.docFreq;
+		  info.postingList.addAll(i.postingList);
+	  }
+	  writer.write(termId + " " + info.corpusFreq + " " + info.docFreq);
+	  for (IntPair pair: info.postingList)
+		  writer.write(" " + pair.first + "," + pair.second);
+	  writer.newLine();
   }
   
   private String stem(String origin, Stemmer stemmer) {
@@ -344,5 +359,29 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
       stemmer.add(lower.toCharArray(), lower.length());
       stemmer.stem();
       return stemmer.toString();
+  }
+  
+  class IntPair {
+	  public int first;
+	  public int second;
+	  public IntPair(int a,int b) {
+		  first = a;
+		  second = b;
+	  }
+  }
+  
+  class TokenInfo {
+	  public int corpusFreq;
+	  public int docFreq;
+	  public ArrayList<IntPair> postingList;
+	  
+	  public TokenInfo() {}
+	  
+	  public TokenInfo(int doc_id) {
+		  corpusFreq = 0;
+		  docFreq = 0;
+		  postingList = new ArrayList<IntPair>();
+		  postingList.add(new IntPair(doc_id,0));
+	  }
   }
 }

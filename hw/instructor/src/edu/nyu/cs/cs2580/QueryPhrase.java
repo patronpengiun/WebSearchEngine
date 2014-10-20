@@ -1,5 +1,6 @@
 package edu.nyu.cs.cs2580;
 
+import java.util.Scanner;
 import java.util.Vector;
 
 /**
@@ -14,9 +15,28 @@ public class QueryPhrase extends Query {
   }
   
   public Vector<String> _tokens = new Vector<String>();
+  public Vector<Vector<String>> _phrases = new Vector<Vector<String>>(); 
 
   @Override
   public void processQuery() {
-	  char[] a = _query.toCharArray();
+	  if (_query == null) {
+	      return;
+	  }
+	  
+	  char[] arr = _query.toCharArray();
+	  boolean inPhrase = false;
+	  StringBuilder tokenBuilder = new StringBuilder();
+	  StringBuilder PhraseBuilder = new StringBuilder();
+	  for (int i=0;i<arr.length;i++) {
+		  if (arr[i] == '"') {
+			  if (inPhrase) {
+				  String token = tokenBuilder.toString();
+				  if (!token.equals(""))
+					  _tokens.add(token);
+			  } else {
+				  inPhrase = true;
+			  }
+		  }
+	  }
   }
 }
