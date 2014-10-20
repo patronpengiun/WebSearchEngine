@@ -4,12 +4,14 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -160,7 +162,14 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 		  return null;
 	  
 	  int cachedPtr = cachedPtrArray[idx];
-	  ArrayList<IntPair> pl = tmap.get(idx).postingList;
+	  ArrayList<IntPair> pl;
+	  if (!tmap.containsKey(idx)) {
+		  try {
+			  tmap.put(idx, fetchInfo(idx));
+		  }
+		  catch(Exception e) {}
+	  }
+	  pl = tmap.get(idx).postingList;
 	  if (pl.get(pl.size()-1).first <= docid)
 		  return null;
 	  
@@ -280,11 +289,15 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  String mergedFile = _options._indexPrefix + "/invertedDocOnlyMerged.idx";
 	  BufferedWriter writer = new BufferedWriter(new FileWriter(mergedFile));
 	  
+	  String offsetFileName = _options._indexPrefix + "/invertedDocOnlyOffset.idx";
+	  RandomAccessFile offsetFile = new RandomAccessFile(offsetFileName, "rw");
+	  
 	  boolean[] toMove = new boolean[num];
 	  Arrays.fill(toMove, true);
 	  int min_id = Integer.MAX_VALUE;
 	  int[] ids = new int[num];
 	  TokenInfo[] infos = new TokenInfo[num];
+	  long offset = 0;
 	  
 	  while(true) {
 		  min_id = Integer.MAX_VALUE;
@@ -312,11 +325,34 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 				  toMove[i] = true;
 			  }
 		  }
-		  writeToIndex(min_id,toMerge,writer);
+		  long size = writeToIndex(min_id,toMerge,writer);
+		  offset += size;
+		  offsetFile.writeLong(offset);
 	  }
 	  for (BufferedReader r: readers)
 		  r.close();
 	  writer.close();
+	  offsetFile.close();
+  }
+  
+  private TokenInfo fetchInfo(int id) throws FileNotFoundException, IOException{
+	  long offset;
+	  String offsetFileName = _options._indexPrefix + "/invertedDocOnlyOffset.idx";
+	  RandomAccessFile offsetFile = new RandomAccessFile(offsetFileName, "r");
+	  if (id == 0)
+		  offset = 0;
+	  else {
+		  offsetFile.seek(8L * (id - 1));
+		  offset = offsetFile.readLong();
+	  }
+	  
+	  String indexFileName = _options._indexPrefix + "/invertedDocOnlyMerged.idx";
+	  RandomAccessFile indexFile = new RandomAccessFile(indexFileName,"r");
+	  indexFile.seek(offset);
+	  String line = indexFile.readLine();
+	  offsetFile.close();
+	  indexFile.close();
+	  return getInfo(line);
   }
   
   private int getId(String line) {
@@ -338,7 +374,8 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  return info;
   }
   
-  private void writeToIndex(int termId,ArrayList<TokenInfo> list,BufferedWriter writer) throws IOException{
+  private long writeToIndex(int termId,ArrayList<TokenInfo> list,BufferedWriter writer) throws IOException{
+	  long result = 0L;
 	  TokenInfo info = new TokenInfo();
 	  info.corpusFreq = 0;
 	  info.docFreq = 0;
@@ -348,10 +385,17 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 		  info.docFreq += i.docFreq;
 		  info.postingList.addAll(i.postingList);
 	  }
-	  writer.write(termId + " " + info.corpusFreq + " " + info.docFreq);
-	  for (IntPair pair: info.postingList)
-		  writer.write(" " + pair.first + "," + pair.second);
+	  String temp = termId + " " + info.corpusFreq + " " + info.docFreq;
+	  writer.write(temp);
+	  result += temp.length();
+	  for (IntPair pair: info.postingList) {
+		  temp = " " + pair.first + "," + pair.second;
+		  result += temp.length();
+		  writer.write(temp);
+	  }
+	  result++;
 	  writer.newLine();
+	  return result;
   }
   
   private String stem(String origin, Stemmer stemmer) {
