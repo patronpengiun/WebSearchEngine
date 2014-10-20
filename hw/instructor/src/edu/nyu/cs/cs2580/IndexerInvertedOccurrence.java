@@ -43,6 +43,10 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
   // the number of times the term appears in the corpus.
   private Map<Integer, Integer> _termCorpusFrequency =
       new HashMap<Integer, Integer>();
+  
+  // Url to docid used in documentTermFrequency, key is the url of the document,
+  // value is the document id
+  private Map<String, Integer> _urlToDoc = new HashMap<String, Integer>(); 
 
   // Stores all Document in memory.
   private Vector<DocumentIndexed> _documents = new Vector<DocumentIndexed>();
@@ -121,7 +125,7 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
       _termFrequencyMapArray.add(new HashMap<Integer,Integer>());
 	  HashMap<Integer,Integer> _termFrequencyMap = _termFrequencyMapArray.get(_termFrequencyMapArray.size() - 1);
       
-	// the text of parsed document
+	  // the text of parsed document
 	  String text = "";	
       try {
     	  org.jsoup.nodes.Document document = Jsoup.parse(file, null);
@@ -157,7 +161,7 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 					  if (uniq_set.contains(token)) {						  
 						  _postingList.get(idx).get(docid).oc.add(offset);						  
 						  _termFrequencyMap.put(idx, _termFrequencyMap.get(idx)+1);						  
-					  } else {		// if the this term first appears in this document
+					  } else {// if the this term first appears in this document
 						  uniq_set.add(idx);
 						  
 						  Posting posting = new Posting(docid);
@@ -198,9 +202,24 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	 String indexFile = _options._indexPrefix + "/invertedOccurance.idx";
 	 System.out.println("Loading index from: " + indexFile);
 	 ObjectInputStream reader = new ObjectInputStream(new FileInputStream(indexFile));
-	 IndexerInvertedOccurrence loaded = (IndexerInvertedOccurrence)reader.readObject();
-	
+	 IndexerInvertedOccurrence loaded = (IndexerInvertedOccurrence)reader.readObject();	
+	 this._documents = loaded._documents;
 	 
+	 // Compute numDocs and totalTermFrequency b/c Indexer is not serializable.
+	 this._numDocs = _documents.size();
+	 for (Integer freq : loaded._termCorpusFrequency.values()) {
+		 this._totalTermFrequency += freq;
+	 }
+
+	 this._postingList = loaded._postingList;
+	 this._termCorpusFrequency = loaded._termCorpusFrequency;
+	 this._urlToDoc = loaded._urlToDoc;
+	 reader.close();
+
+	 //printIndex();
+
+	 System.out.println(Integer.toString(_numDocs) + " documents loaded " +
+			 "with " + Long.toString(_totalTermFrequency) + " terms!");
 	 
   }
 
@@ -213,16 +232,179 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
    * In HW2, you should be using {@link DocumentIndexed}.
    */
   @Override
-  public DocumentIndexed nextDoc(Query query, int docid) {
-    return null;
+  public DocumentIndexed nextDoc(Query query, int doc_id) {
+	  boolean flag = false;		// mark whether we should continue getting next document
+	  Integer docid = doc_id;
+
+	  while((docid = next_doc_terms(query._tokens,docid)) != null){
+		  flag = false;
+
+		  // if this document have the complete phrases we are querying
+		  for(Vector<String> phrase : query._phrases){
+			  if(nextPhrase(phrase,docid,-1) == null){
+				  flag = true;
+				  break;
+			  }
+		  }
+		  if(flag){
+			  continue;
+		  }else{
+			  // found the document and return it
+			  DocumentIndexed result = new DocumentIndexed(docid);
+			  return result;
+		  }
+	  }
+	  // if we reaches here, we have not find any matched document
+	  return null;
   }
   
-  // the next occurrence of the term in docid after pos
-  private DocumentIndexed next_pos(String term, int docid, int pos) {
+  private Integer next_doc_terms(Vector<String> tokens, int docid) {
+	  if(tokens.size() <= 0){
+	      if(docid <= 0){
+	        return 1;
+	      }else if(docid >= _numDocs){
+	        return null;
+	      }else{
+	        return docid + 1;
+	      }
+	    }
+	    int did = next_doc_term(tokens.get(0), docid); 
+	    boolean returnable = true;
+	    int max_docid = did;
+	    int i = 1;
+	    Integer tempDid;
+	    for(;i < tokens.size(); i++){
+	      tempDid = next_doc_term(tokens.get(i), docid);
+	      //one of the term will never find next
+	      if(tempDid == null){
+	        return null;
+	      }
+	      if(tempDid > max_docid){
+	        max_docid = tempDid;
+	      } 
+	      if(tempDid != did){
+	        returnable = false;
+	      }
+	    }    
+	    if(returnable){
+	      return did;
+	    }else{
+	      return next_doc_terms(tokens, max_docid - 1);
+	    }
+  }
+
+  private Integer next_doc_term(String term, int docid) {
+	  if(_postingList.containsKey(term)){
+		  ArrayList<Posting> postings = _postingList.get(term);
+		  int largest = postings.get(postings.size() - 1).docid;
+		  if(largest < docid){
+			  return null;
+		  }
+		  if(postings.get(0).docid > docid){
+			  return (Integer)postings.get(0).docid;
+		  }
+		  return binarySearchDoc(postings, 0, postings.size() - 1, docid);
+	  }
 	  return null;
   }
 
-  @Override
+  private Integer binarySearchDoc(ArrayList<Posting> postings, int low, int high, int docid) {
+	  int mid;
+	    while((high-low)>1){
+	      mid = (low+high)/2;
+	      if(postings.get(mid).docid <= docid){
+	        low = mid;
+	      }else{
+	        high = mid;
+	      }
+	    }
+	    return (Integer)postings.get(high).docid;
+  }
+
+  private Integer nextPhrase(Vector<String> phrase, int docid, int pos) {
+	  int did = next_doc_terms(phrase, docid - 1);
+	    if(docid != did){
+	      return null;
+	    }
+	    int position = next_pos_term(phrase.get(0), docid, pos); 
+	    boolean returnable = true;
+	    int largestPos = position;
+	    int i = 1;
+	    Integer tempPos;
+	    for(;i<phrase.size();i++){
+	      tempPos = next_pos_term(phrase.get(i), docid, pos);
+	      
+	      if(tempPos == null){
+	        return null;
+	      }
+	      if(tempPos>largestPos){
+	        largestPos = tempPos;
+	      } 
+	      if(tempPos!=position+1){
+	        returnable = false;
+	      }else{
+	        position = tempPos;
+	      }
+	    }    
+	    if(returnable){
+	      return position;
+	    }else{
+	      return nextPhrase(phrase, docid, largestPos);
+	    }
+	    
+  }
+
+  // the next occurrence of the term in docid after pos
+  private Integer next_pos_term(String term, int docid, int pos) {
+	  if(_postingList.containsKey(term)){
+	      ArrayList<Posting> postings = _postingList.get(term);
+	      Posting posting = binarySearchPosting(postings, 0, postings.size() - 1, docid);
+	      if(posting == null){
+	        return null; 
+	      }
+	      Integer max = posting.oc.get(posting.oc.size() -1);
+	      if(max < pos){
+	        return null;
+	      }
+	      if(posting.oc.get(0) > pos){
+	        return (Integer)posting.oc.get(0);
+	      }
+	      return binarySearchPositions(posting.oc,0,posting.oc.size(),pos);
+	    }
+	    return null;
+  }
+
+  private Integer binarySearchPositions(ArrayList<Integer> oc, int low, int high, int pos) {
+	  int mid;
+	    while((high - low) > 1){
+	      mid = (low + high) / 2;
+	      if(oc.get(mid) <= pos){
+	        low = mid;
+	      }else{
+	        high = mid;
+	      }
+	    }
+	    return (Integer)oc.get(high);
+  }
+
+private Posting binarySearchPosting(ArrayList<Posting> postings, int low, int high, int docid) {
+	  int mid;
+	    while((high - low) > 1){
+	      mid = (low + high) / 2;
+	      if(postings.get(mid).docid <= docid){
+	        low = mid;
+	      }else{
+	        high = mid;
+	      }
+	    }
+	    if(postings.get(high).docid == docid){
+	      return postings.get(high);
+	    }else{
+	      return null;
+	    }
+  }
+
+@Override
   public int corpusDocFrequencyByTerm(String term) {
 	  Integer idx = _dictionary.get(term);
 	  if (null == idx)
@@ -242,8 +424,19 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 
   @Override
   public int documentTermFrequency(String term, String url) {
-    SearchEngine.Check(false, "Not implemented!");
-    return 0;
+	  if(_urlToDoc.containsKey(url)){
+	      int did = _urlToDoc.get(url);
+	      QueryPhrase query = new QueryPhrase(term);
+	      DocumentIndexed doc = (DocumentIndexed)nextDoc(query,did);
+	      if(doc != null){
+//	        return doc.getOccurance();	// need to discuss
+	    	return 0;
+	      }else{
+	        return 0;
+	      }
+	    }else{
+	      return 0;
+	    }
   }
   
   //get the term frequency of a term in the document with the docid

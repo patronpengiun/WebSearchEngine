@@ -47,4 +47,8 @@ public class DocumentIndexed extends Document {
 	  else
 		return 0;
   }
+
+  public int getOccurance() {
+	  
+  }
 }
