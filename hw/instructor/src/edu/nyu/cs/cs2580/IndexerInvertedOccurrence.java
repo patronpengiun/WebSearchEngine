@@ -47,8 +47,10 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
   // Stores all Document in memory.
   private Vector<DocumentIndexed> _documents = new Vector<DocumentIndexed>();
   
-  //Each element in the array is the term frequency of the terms that appears in a particular document
-  private ArrayList<HashMap<Integer,Integer>> _termFrequencyMapArray = new ArrayList<HashMap<Integer,Integer>>();
+  // Each element in the array is the term frequency of 
+  // the terms that appears in a particular document
+  private ArrayList<HashMap<Integer,Integer>> _termFrequencyMapArray = 
+		  new ArrayList<HashMap<Integer,Integer>>();
 
   private class Posting implements Serializable {
 	  public int docid;
@@ -100,7 +102,7 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
               + Long.toString(_totalTermFrequency) + " terms.");
 
       // serialize the index(posting list)
-      String indexFile = _options._indexPrefix + "/corpus.idx";
+      String indexFile = _options._indexPrefix + "/invertedOccurance.idx";
       System.out.println("Store index to: " + indexFile);
       ObjectOutputStream writer = 
     		  new ObjectOutputStream(new FileOutputStream(indexFile));
@@ -119,8 +121,8 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
       _termFrequencyMapArray.add(new HashMap<Integer,Integer>());
 	  HashMap<Integer,Integer> _termFrequencyMap = _termFrequencyMapArray.get(_termFrequencyMapArray.size() - 1);
       
-      
-	  String text = "";										// the text of parsed document
+	// the text of parsed document
+	  String text = "";	
       try {
     	  org.jsoup.nodes.Document document = Jsoup.parse(file, null);
     	  doc.setTitle(document.title());
@@ -131,19 +133,26 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 		  System.err.println(e.getMessage());
 	  }
 	  
-	  Set<Integer> uniq_set = new HashSet<Integer>();	// the uniq term set for this document
+      // the uniq term set for this document
+	  Set<Integer> uniq_set = new HashSet<Integer>();
 	  Scanner[] sr = new Scanner[2];
 	  sr[0] = new Scanner(text).useDelimiter("\\s+");
 	  sr[1] = new Scanner(doc.getTitle()).useDelimiter("\\s+");
 	
 	  for (Scanner scanner: sr) {
 		  while(scanner.hasNext()) {
-			  int offset = 1;								// offset of the token
-			  String token = stem(scanner.next(),stemmer);	// stem each term
+			  // offset of the token
+			  int offset = 1;
+			  
+			  // stem each term
+			  String token = stem(scanner.next(),stemmer);
+			  
 			  if (!token.equals("")) {
-				  int idx;									// integer representation of the term
+				  // integer representation of the term
+				  int idx;
 				  
-				  if (_dictionary.containsKey(token)) {		// if the term appears in corpus
+				  // if the term appears in corpus
+				  if (_dictionary.containsKey(token)) {
 					  idx = _dictionary.get(token);
 					  if (uniq_set.contains(token)) {						  
 						  _postingList.get(idx).get(docid).oc.add(offset);						  
@@ -186,19 +195,18 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 
 @Override
   public void loadIndex() throws IOException, ClassNotFoundException {
-	 String indexFile = _options._indexPrefix + "/corpus.idx";
-	 System.out.println("Load index from: " + indexFile);
-
+	 String indexFile = _options._indexPrefix + "/invertedOccurance.idx";
+	 System.out.println("Loading index from: " + indexFile);
 	 ObjectInputStream reader = new ObjectInputStream(new FileInputStream(indexFile));
 	 IndexerInvertedOccurrence loaded = (IndexerInvertedOccurrence)reader.readObject();
-	 
+	
 	 
 	 
   }
 
   @Override
   public DocumentIndexed getDoc(int docid) {
-    return null;
+    return _documents.get(docid);
   }
 
   /**
@@ -208,21 +216,46 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
   public DocumentIndexed nextDoc(Query query, int docid) {
     return null;
   }
+  
+  // the next occurrence of the term in docid after pos
+  private DocumentIndexed next_pos(String term, int docid, int pos) {
+	  return null;
+  }
 
   @Override
   public int corpusDocFrequencyByTerm(String term) {
-    return 0;
+	  Integer idx = _dictionary.get(term);
+	  if (null == idx)
+		  return 0;
+	  else
+		  return _termDocFrequency.get(idx);
   }
 
   @Override
   public int corpusTermFrequency(String term) {
-    return 0;
+	  Integer idx = _dictionary.get(term);
+	  if (null == idx)
+		  return 0;
+	  else
+		  return _termCorpusFrequency.get(idx);
   }
 
   @Override
   public int documentTermFrequency(String term, String url) {
     SearchEngine.Check(false, "Not implemented!");
     return 0;
+  }
+  
+  //get the term frequency of a term in the document with the docid
+  public int documentTermFrequency(String term, Integer docid) {
+	  Integer idx = _dictionary.get(term);
+	  if (null == idx)
+		  return 0;
+	  else {
+		  //if (docid < _termFrequencyMapArray.size())
+			  //return _termFrequencyMapArray.get(docid).get(idx);
+	  }
+	  return 0;
   }
   
   private String stem(String origin, Stemmer stemmer) {
