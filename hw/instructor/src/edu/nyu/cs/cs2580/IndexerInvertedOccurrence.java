@@ -157,10 +157,10 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  sr[1] = new Scanner(doc.getTitle()).useDelimiter("\\s+");
 	
 	  for (Scanner scanner: sr) {
+		  // offset of the token
+		  int offset = 1;
 		  while(scanner.hasNext()) {
-			  // offset of the token
-			  int offset = 1;
-			  
+			  			  
 			  // stem each term
 			  String token = stem(scanner.next(),stemmer);
 			  
@@ -217,9 +217,9 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 				  if (plist.get(plist.size()-1).docid == doc_id)
 					  plist.get(plist.size()-1).oc.add(offset);
 				  else
-					  plist.add(new Posting(doc_id));				  
-			  }			  
-			  ++offset;
+					  plist.add(new Posting(doc_id));
+				  offset++;
+			  }			  			  
 		  }
 		  scanner.close();
 	  }
@@ -238,12 +238,24 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 		  TokenInfo info = tmap.get(key);
 		  writer.write(key + " " + info.corpusFreq + " " + info.docFreq);
 		  for (Posting posting: info.postingList)
-			  writer.write(" " + posting.docid + "," + posting.oc);
+			  writer.write(" " + posting.docid + "," + toOccuranceListString(posting.oc));
 		  writer.newLine();
 	  }
 	  tmap.clear();
 	  writer.close();
 	  System.gc();
+  }
+  
+  private String toOccuranceListString(ArrayList<Integer> list) {
+	  String result = "";
+	  
+	  for(int i = 0; i < list.size(); i++) {
+		  if (i == list.size() - 1)
+			  result += list.get(i);
+		  else 
+			  result += list.get(i) + ",";
+	  }
+	  return result;
   }
 
   private void merge (int num) throws IOException{
@@ -342,7 +354,11 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  info.postingList = new ArrayList<Posting>();
 	  while (s.hasNext()) {
 		  String[] e = s.next().split(",");
-		  info.postingList.add(new Posting(Integer.parseInt(e[0].trim())));
+		  
+		  Posting p = new Posting(Integer.parseInt(e[0]));
+		  for (int i = 1;i < e.length; i++) { p.oc.add(Integer.parseInt(e[i])); }
+		  info.postingList.add(p);
+		  
 	  }
 	  return info;
   }
