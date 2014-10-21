@@ -1,5 +1,7 @@
 package edu.nyu.cs.cs2580;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
@@ -26,8 +28,6 @@ import java.util.Vector;
 
 import org.jsoup.Jsoup;
 
-import edu.nyu.cs.cs2580.IndexerInvertedDoconly.IntPair;
-import edu.nyu.cs.cs2580.IndexerInvertedDoconly.TokenInfo;
 import edu.nyu.cs.cs2580.SearchEngine.Options;
 
 /**
@@ -79,7 +79,7 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
               if (file.isFile()) {
             	  processDocument(file, stemmer); 
     		  }
-    		  if (temp > numOfDoc / 10) {
+    		  if (temp > numOfDoc / 40) {
     			  temp = 0;
     			  num_pieces++;
     			  dump(num_pieces);
@@ -98,13 +98,13 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  System.out.println("store documents idx");
 	  String documentIndexFile = _options._indexPrefix + "/invertedOccuranceDoc.idx";
 	  ObjectOutputStream writer =
-		  new ObjectOutputStream(new FileOutputStream(documentIndexFile));
+		  new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(documentIndexFile)));
 	  writer.writeObject(_documents);
 	  writer.close();
 		  
 	  System.out.println("store dictionary idx");
 	  String termIndexFile = _options._indexPrefix + "/invertedOccuranceTerm.idx";
-	  writer = new ObjectOutputStream(new FileOutputStream(termIndexFile));
+	  writer = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(termIndexFile)));
 	  writer.writeObject(_dictionary);
 	  writer.close();
   }
@@ -330,13 +330,13 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
   public void loadIndex() throws IOException, ClassNotFoundException {
 	 String indexFile = _options._indexPrefix + "/invertedOccuranceDoc.idx";
 	 System.out.println("Loading documents from: " + indexFile);
-	 ObjectInputStream reader = new ObjectInputStream(new FileInputStream(indexFile));
+	 ObjectInputStream reader = new ObjectInputStream(new BufferedInputStream(new FileInputStream(indexFile)));
 	 this._documents = (Vector<DocumentIndexed>)reader.readObject();
 	 reader.close();
 	 
 	 System.out.println("loading dictionary");
 	 String termIndexFile = _options._indexPrefix + "/invertedOccuranceTerm.idx";
-	 reader = new ObjectInputStream(new FileInputStream(termIndexFile));
+	 reader = new ObjectInputStream(new BufferedInputStream(new FileInputStream(termIndexFile)));
 	 this._dictionary = (Map<String, Integer>)reader.readObject();
 	 reader.close();
 	 

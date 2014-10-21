@@ -16,6 +16,8 @@ public class QueryPhrase extends Query {
   
   @Override
   public void processQuery() {
+	  Stemmer stemmer = new Stemmer();
+	  
 	  if (_query == null) {
 	      return;
 	  }
@@ -28,7 +30,8 @@ public class QueryPhrase extends Query {
 		  Scanner sc = new Scanner(phrase);
 		  Vector<String> temp = new Vector<String>();
 		  while (sc.hasNext()) {
-			  String token = sc.next();
+			  // stem
+			  String token = stem(sc.next(),stemmer);
 			  temp.add(token);
 			  _tokens.add(token);
 		  }
@@ -39,7 +42,15 @@ public class QueryPhrase extends Query {
 	  }
 	  Scanner sc = new Scanner(_query);
 	  while (sc.hasNext())
-		  _tokens.add(sc.next());
+		  // stem
+		  _tokens.add(stem(sc.next(),stemmer));
 	  sc.close();
+  }
+  
+  private String stem(String origin, Stemmer stemmer) {
+	  String lower = origin.toLowerCase();
+      stemmer.add(lower.toCharArray(), lower.length());
+      stemmer.stem();
+      return stemmer.toString();
   }
 }
