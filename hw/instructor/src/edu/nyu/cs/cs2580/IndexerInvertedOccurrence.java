@@ -108,16 +108,16 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
     			  num_pieces++;
     			  dump(num_pieces);
     		  }
-    		  num_pieces++;
-    		  dump(num_pieces);
-    		  
-    		  System.out.println("merging pieces");
-    		  merge(num_pieces);
-    		               
-          }
+          }		               
       } catch (Exception e) {
           e.printStackTrace();
       }
+	  
+	  num_pieces++;
+	  dump(num_pieces);
+	  
+	  System.out.println("merging pieces");
+	  merge(num_pieces);
      
 	  System.out.println("store documents idx");
 	  String documentIndexFile = _options._indexPrefix + "/invertedOccurance.idx";
