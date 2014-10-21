@@ -3,6 +3,7 @@ package edu.nyu.cs.cs2580;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.File;
@@ -14,8 +15,10 @@ import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
@@ -23,6 +26,8 @@ import java.util.Vector;
 
 import org.jsoup.Jsoup;
 
+import edu.nyu.cs.cs2580.IndexerInvertedDoconly.IntPair;
+import edu.nyu.cs.cs2580.IndexerInvertedDoconly.TokenInfo;
 import edu.nyu.cs.cs2580.SearchEngine.Options;
 
 /**
@@ -33,38 +38,10 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
   private static final long serialVersionUID = 1077111905740085031L;
 
   // Maps each term to their integer representation
-  private Map<String, Integer> _dictionary = new HashMap<String, Integer>();
-
-  // All unique terms appeared in corpus. Offsets are integer representations.
-  private Vector<String> _terms = new Vector<String>();
-
-//  // Term document frequency, key is the integer representation of the term and
-//  // value is the number of documents the term appears in.
-//  private Map<Integer, Integer> _termDocFrequency =
-//      new HashMap<Integer, Integer>();
-//
-//  // Term frequency, key is the integer representation of the term and value is
-//  // the number of times the term appears in the corpus.
-//  private Map<Integer, Integer> _termCorpusFrequency =
-//      new HashMap<Integer, Integer>();
-  
-  // Url to docid used in documentTermFrequency, key is the url of the document,
-  // value is the document id
-  private Map<String, Integer> _urlToDoc = new HashMap<String, Integer>(); 
+  private Map<String, Integer> _dictionary = new HashMap<String, Integer>(); 
 
   // Stores all Document in memory.
   private Vector<DocumentIndexed> _documents = new Vector<DocumentIndexed>();
-  
-  // Each element in the array is the term frequency of 
-  // the terms that appears in a particular document
-  private ArrayList<HashMap<Integer,Integer>> _termFrequencyMapArray = 
-		  new ArrayList<HashMap<Integer,Integer>>();
-
-  
-//  // The index list of each term and posting, key is the integer representation
-//  // of each term, value is posting of that term
-//  private Map<Integer, ArrayList<Posting>> _postingList = 
-//		  new HashMap<Integer, ArrayList<Posting>>();
   
   //All the information about a token
   private HashMap<Integer,TokenInfo> tmap = new HashMap<Integer,TokenInfo>();
@@ -91,14 +68,13 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
           int numOfDoc = listFiles.length;
           int count = 0, temp = 0;
           
-          // the parser is used to parse html into plain text
           Stemmer stemmer = new Stemmer();
           
           for (File file : listFiles) {
         	  count++;
         	  temp++;
         	  System.out.println(listFiles.length + " / " + count);       	  
-              System.out.println(file.getName());
+              //System.out.println(file.getName());
               
               if (file.isFile()) {
             	  processDocument(file, stemmer); 
@@ -120,7 +96,7 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  merge(num_pieces);
      
 	  System.out.println("store documents idx");
-	  String documentIndexFile = _options._indexPrefix + "/invertedOccurance.idx";
+	  String documentIndexFile = _options._indexPrefix + "/invertedOccuranceDoc.idx";
 	  ObjectOutputStream writer =
 		  new ObjectOutputStream(new FileOutputStream(documentIndexFile));
 	  writer.writeObject(_documents);
@@ -153,12 +129,11 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
       // the uniq term set for this document
 	  Set<Integer> uniq_set = new HashSet<Integer>();
 	  Scanner[] sr = new Scanner[2];
-	  sr[0] = new Scanner(text).useDelimiter("\\s+");
-	  sr[1] = new Scanner(doc.getTitle()).useDelimiter("\\s+");
-	
+	  sr[0] = new Scanner(doc.getTitle()).useDelimiter("\\s+");
+	  sr[1] = new Scanner(text).useDelimiter("\\s+");
+	  
+	  int offset = 0;
 	  for (Scanner scanner: sr) {
-		  // offset of the token
-		  int offset = 1;
 		  while(scanner.hasNext()) {
 			  			  
 			  // stem each term
@@ -167,48 +142,13 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 			  if(token.equals("")) {
 				  continue;
 			  } else {
-				  // integer representation of the term
 				  int idx;				  
-				  // if the term appears in corpus
 				  if (_dictionary.containsKey(token)) {
-//					  idx = _dictionary.get(token);
-//					  if (uniq_set.contains(token)) {						  
-//						  _postingList.get(idx).get(docid).oc.add(offset);						  
-//						  _termFrequencyMap.put(idx, _termFrequencyMap.get(idx)+1);						  
-//					  } else {// if the this term first appears in this document
-//						  uniq_set.add(idx);
-//						  
-//						  Posting posting = new Posting(docid);
-//						  posting.oc.add(offset);						  
-//						  					  
-//						  _postingList.get(idx).add(posting);
-//						  
-//						  _termFrequencyMap.put(idx,1);
-//						  _termDocFrequency.put(idx,_termDocFrequency.get(idx)+1);
-//					  }	
-					  
 					  idx = _dictionary.get(token);
 				  } else {
-//					idx = _dictionary.size();
-//					_dictionary.put(token, idx);
-//					uniq_set.add(idx);
-//					
-//					Posting posting = new Posting(docid);
-//					posting.oc.add(offset);
-//					
-//					// the list of positions of term occurs in this document
-//				    ArrayList<Posting> postings = new ArrayList<Posting>();
-//					postings.add(posting);					
-//					_postingList.put(idx, postings);
-//					
-//					_termFrequencyMap.put(idx,1);
-//					_termDocFrequency.put(idx,1);
-//					_termCorpusFrequency.put(idx, 1);
-					  
 					  idx = _dictionary.size();
 					  _dictionary.put(token, idx);
 				  }
-				  
 				  uniq_set.add(idx);
 				  if (tmap.get(idx) == null)
 					  tmap.put(idx, new TokenInfo(doc_id));
@@ -216,8 +156,11 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 				  ArrayList<Posting> plist = tmap.get(idx).postingList;
 				  if (plist.get(plist.size()-1).docid == doc_id)
 					  plist.get(plist.size()-1).oc.add(offset);
-				  else
-					  plist.add(new Posting(doc_id));
+				  else {
+					  Posting posting = new Posting(doc_id);
+					  posting.oc.add(offset);
+					  plist.add(posting);
+				  }
 				  offset++;
 			  }			  			  
 		  }
@@ -330,13 +273,33 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  writer.write(temp);
 	  result += temp.length();
 	  for (Posting posting: info.postingList) {
-		  temp = " " + posting.docid + "," + posting.oc;
+		  temp = " " + posting.docid + "," + toOccuranceListString(posting.oc);
 		  result += temp.length();
 		  writer.write(temp);
 	  }
 	  result++;
 	  writer.newLine();
 	  return result;
+  }
+  
+  private TokenInfo fetchInfo(int id) throws FileNotFoundException, IOException{
+	  long offset;
+	  String offsetFileName = _options._indexPrefix + "/invertedOccuranceOffset.idx";
+	  RandomAccessFile offsetFile = new RandomAccessFile(offsetFileName, "r");
+	  if (id == 0)
+		  offset = 0;
+	  else {
+		  offsetFile.seek(8L * (id - 1));
+		  offset = offsetFile.readLong();
+	  }
+	  
+	  String indexFileName = _options._indexPrefix + "/invertedOccuranceMerged.idx";
+	  RandomAccessFile indexFile = new RandomAccessFile(indexFileName,"r");
+	  indexFile.seek(offset);
+	  String line = indexFile.readLine();
+	  offsetFile.close();
+	  indexFile.close();
+	  return getInfo(line);
   }
   
   
@@ -365,11 +328,11 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 
   @Override
   public void loadIndex() throws IOException, ClassNotFoundException {
-	 String indexFile = _options._indexPrefix + "/invertedOccurance.idx";
-	 System.out.println("Loading index from: " + indexFile);
+	 String indexFile = _options._indexPrefix + "/invertedOccuranceDoc.idx";
+	 System.out.println("Loading documents from: " + indexFile);
 	 ObjectInputStream reader = new ObjectInputStream(new FileInputStream(indexFile));
-	 IndexerInvertedOccurrence loaded = (IndexerInvertedOccurrence)reader.readObject();	
-	 this._documents = loaded._documents;
+	 this._documents = (Vector<DocumentIndexed>)reader.readObject();
+	 reader.close();
 	 
 	 System.out.println("loading dictionary");
 	 String termIndexFile = _options._indexPrefix + "/invertedOccuranceTerm.idx";
@@ -380,8 +343,8 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	 // Compute numDocs and totalTermFrequency b/c Indexer is not serializable.
 	 this._numDocs = _documents.size();
 	  
-//	 this.cachedPtrArray = new int[_dictionary.size()];
-//	 Arrays.fill(cachedPtrArray,0);
+	 this.cachedPtrArray = new int[_dictionary.size()];
+	 Arrays.fill(cachedPtrArray,0);
 	 
   }
 
@@ -395,176 +358,144 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
    */
   @Override
   public DocumentIndexed nextDoc(Query query, int doc_id) {
-	  boolean flag = false;		// mark whether we should continue getting next document
-	  Integer docid = doc_id;
-
-	  while((docid = next_doc_terms(query._tokens,docid)) != null){
-		  flag = false;
-
-		  // if this document have the complete phrases we are querying
-		  for(Vector<String> phrase : query._phrases){
-			  if(nextPhrase(phrase,docid,-1) == null){
-				  flag = true;
+	  while(true) {
+		  System.out.println(query._tokens);
+		  Integer candidate = nextDoc_withAllTokens(query._tokens,doc_id);
+		  System.out.println(candidate);
+		  if (candidate == null)
+			  return null;
+		  boolean containAll = true;
+		  for (Vector<String> phrase: query._phrases) {
+			  if (!containsPhrase(phrase,candidate)) {
+				  containAll = false;
 				  break;
 			  }
 		  }
-		  if(flag){
-			  continue;
-		  }else{
-			  // found the document and return it
-			  DocumentIndexed result = new DocumentIndexed(docid);
-			  return result;
-		  }
+		  if (containAll)
+			  return _documents.get(candidate);
+		  else
+			  doc_id = candidate;
 	  }
-	  // if we reaches here, we have not find any matched document
+  }
+  
+  private boolean containsPhrase (Vector<String> phrase, int docid) {
+	  Integer pos = -1;
+	  while (true) {
+		  boolean contains = true;
+		  List<Integer> positions = new ArrayList<Integer>();
+
+	      for (String term : phrase) {
+	        Integer p = nextPos(term, docid, pos);
+	        if (p == null) {
+	          return false;
+	        }
+	        positions.add(p);
+	      }
+
+	      int p1 = positions.get(0);
+	      for (int i = 1; i < positions.size(); i++) {
+	        int p2 = positions.get(i);
+	        if ((p1 + 1) != p2) {
+	          contains = false;
+	          break;
+	        }
+	        p1 = p2;
+	      }
+	      if (contains) {
+	        return true;
+	      }
+	      pos = Collections.min(positions);
+	  }
+  }
+  
+  private Integer nextPos(String token, int docid, int pos) {
+	  Integer idx = _dictionary.get(token);
+	  if (null == idx)
+		  return null;
+	  
+	  if (!tmap.containsKey(idx)) {
+		  try {
+			  tmap.put(idx, fetchInfo(idx));
+		  }
+		  catch(Exception e) {}
+	  }
+	  ArrayList<Posting> pl = tmap.get(idx).postingList;
+	  Posting p = searchPosting(pl,docid);
+	  if (null == p)
+		  return null;
+	  ArrayList<Integer> oc = p.oc;
+	  return searchOc(oc,pos);
+  }
+  
+  private Posting searchPosting(ArrayList<Posting> pl, int docid) {
+	  for (int i=0;i<pl.size();i++) {
+		  if (pl.get(i).docid == docid)
+			  return pl.get(i);
+		  if (pl.get(i).docid > docid)
+			  return null;
+	  }
 	  return null;
   }
   
-  private Integer next_doc_terms(Vector<String> tokens, int docid) {
-	  if(tokens.size() <= 0){
-	      if(docid <= 0){
-	        return 1;
-	      }else if(docid >= _numDocs){
-	        return null;
-	      }else{
-	        return docid + 1;
-	      }
-	    }
-	    int did = next_doc_term(tokens.get(0), docid); 
-	    boolean returnable = true;
-	    int max_docid = did;
-	    int i = 1;
-	    Integer tempDid;
-	    for(;i < tokens.size(); i++){
-	      tempDid = next_doc_term(tokens.get(i), docid);
-	      //one of the term will never find next
-	      if(tempDid == null){
-	        return null;
-	      }
-	      if(tempDid > max_docid){
-	        max_docid = tempDid;
-	      } 
-	      if(tempDid != did){
-	        returnable = false;
-	      }
-	    }    
-	    if(returnable){
-	      return did;
-	    }else{
-	      return next_doc_terms(tokens, max_docid - 1);
-	    }
-  }
-
-  private Integer next_doc_term(String term, int docid) {
-	  if(tmap.containsKey(term)){
-		  ArrayList<Posting> postings = tmap.get(term).postingList;
-		  int largest = postings.get(postings.size() - 1).docid;
-
-		  if(largest < docid){
-			  return null;
-		  }
-		  if(postings.get(0).docid > docid){
-			  return (Integer)postings.get(0).docid;
-		  }
-		  return binarySearchDoc(postings, 0, postings.size() - 1, docid);
+  private Integer searchOc(ArrayList<Integer> list, int pos) {
+	  for (int i=0;i<list.size();i++) {
+		  if (list.get(i)>pos)
+			  return list.get(i);
 	  }
 	  return null;
   }
-
-  private Integer binarySearchDoc(ArrayList<Posting> postings, int low, int high, int docid) {
-	  int mid;
-	  while((high-low)>1){
-		  mid = (low+high)/2;
-		  if(postings.get(mid).docid <= docid){
-			  low = mid;
-		  }else{
-			  high = mid;
-		  }
+  
+  private Integer nextDoc_withAllTokens(Vector<String> tokens, int docid) {
+	  if (0 == tokens.size())
+		  return null;
+	  boolean flag = true;
+	  int prev = 0;
+	  int max = -1;
+	  for (int i=0;i<tokens.size();i++) {
+		  Integer pos = next(tokens.get(i),docid);
+		  if (null == pos)
+			  return null;
+		  if (flag && i != 0 && pos != prev)
+			  flag = false;
+		  prev = pos;
+		  max = Math.max(max,pos);
 	  }
-	  return (Integer)postings.get(high).docid;
-  }
-
-  private Integer nextPhrase(Vector<String> phrase, int docid, int pos) {
-	  int did = next_doc_terms(phrase, docid - 1);
-	    if(docid != did){
-	      return null;
-	    }
-	    int position = next_pos_term(phrase.get(0), docid, pos); 
-	    boolean returnable = true;
-	    int largestPos = position;
-	    int i = 1;
-	    Integer tempPos;
-	    for(;i<phrase.size();i++){
-	      tempPos = next_pos_term(phrase.get(i), docid, pos);
-	      
-	      if(tempPos == null){
-	        return null;
-	      }
-	      if(tempPos>largestPos){
-	        largestPos = tempPos;
-	      } 
-	      if(tempPos!=position+1){
-	        returnable = false;
-	      }else{
-	        position = tempPos;
-	      }
-	    }    
-	    if(returnable){
-	      return position;
-	    }else{
-	      return nextPhrase(phrase, docid, largestPos);
-	    }
-	    
-  }
-
-  // the next occurrence of the term in docid after pos
-  private Integer next_pos_term(String term, int docid, int pos) {
-	  if(tmap.containsKey(term)){
-	      ArrayList<Posting> postings = tmap.get(term).postingList;
-	      Posting posting = binarySearchPosting(postings, 0, postings.size() - 1, docid);
-	      if(posting == null){
-	        return null; 
-	      }
-	      Integer max = posting.oc.get(posting.oc.size() -1);
-	      if(max < pos){
-	        return null;
-	      }
-	      if(posting.oc.get(0) > pos){
-	        return (Integer)posting.oc.get(0);
-	      }
-	      return binarySearchPositions(posting.oc,0,posting.oc.size(),pos);
-	    }
-	    return null;
-  }
-
-  private Integer binarySearchPositions(ArrayList<Integer> oc, int low, int high, int pos) {
-	  int mid;
-	    while((high - low) > 1){
-	      mid = (low + high) / 2;
-	      if(oc.get(mid) <= pos){
-	        low = mid;
-	      }else{
-	        high = mid;
-	      }
-	    }
-	    return (Integer)oc.get(high);
-  }
-
-private Posting binarySearchPosting(ArrayList<Posting> postings, int low, int high, int docid) {
-	  int mid;
-	    while((high - low) > 1){
-	      mid = (low + high) / 2;
-	      if(postings.get(mid).docid <= docid){
-	        low = mid;
-	      }else{
-	        high = mid;
-	      }
-	    }
-	    if(postings.get(high).docid == docid){
-	      return postings.get(high);
-	    }else{
-	      return null;
-	    }
+	  if (flag)
+		  return prev;
+	  else
+		  return nextDoc_withAllTokens(tokens,max-1);
+  } 
+  
+  private int[] cachedPtrArray;
+  
+  private Integer next(String token, int docid) {
+	  Integer idx = _dictionary.get(token);
+	  if (null == idx)
+		  return null;
+	  
+	  int cachedPtr = cachedPtrArray[idx];
+	  ArrayList<Posting> pl;
+	  if (!tmap.containsKey(idx)) {
+		  try {
+			  tmap.put(idx, fetchInfo(idx));
+		  }
+		  catch(Exception e) {}
+	  }
+	  pl = tmap.get(idx).postingList;
+	  if (pl.get(pl.size()-1).docid <= docid)
+		  return null;
+	  
+	  if (pl.get(0).docid > docid) {
+		  cachedPtrArray[idx] = 0;
+		  return pl.get(0).docid;
+	  }
+	  
+	  if (cachedPtr > 0 && pl.get(cachedPtr-1).docid > docid)
+		  cachedPtr = 0;
+	  while (pl.get(cachedPtr).docid <= docid)
+		  cachedPtr++;
+	  cachedPtrArray[idx] = cachedPtr;
+	  return pl.get(cachedPtr).docid;
   }
 
 @Override
@@ -587,19 +518,7 @@ private Posting binarySearchPosting(ArrayList<Posting> postings, int low, int hi
 
   @Override
   public int documentTermFrequency(String term, String url) {
-	  if(_urlToDoc.containsKey(url)){
-	      int did = _urlToDoc.get(url);
-	      QueryPhrase query = new QueryPhrase(term);
-	      DocumentIndexed doc = (DocumentIndexed)nextDoc(query,did);
-	      if(doc != null){
-//	        return doc.getOccurance();	// need to discuss
-	    	return 0;
-	      }else{
-	        return 0;
-	      }
-	    }else{
-	      return 0;
-	    }
+	  return 0;
   }
   
   //get the term frequency of a term in the document with the docid
@@ -622,7 +541,7 @@ private Posting binarySearchPosting(ArrayList<Posting> postings, int low, int hi
   }
   
   
-  class Posting implements Serializable {
+  class Posting {
 	  public int docid;
 	  
 	  /* Stored each position of the term occurs

@@ -105,18 +105,6 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  this._dictionary = (Map<String, Integer>)reader.readObject();
 	  reader.close();
 	  
-	  /*System.out.println("loading postings lists");
-	  String mergedFile = _options._indexPrefix + "/invertedDocOnlyMerged.idx";
-	  BufferedReader listReader = new BufferedReader(new FileReader(mergedFile));
-	  String line;
-	  int count=0;
-	  while ((line = listReader.readLine()) != null) {
-		  System.out.println(count++);
-		  tmap.put(getId(line),getInfo(line));
-	  }
-	  listReader.close();*/
-	  
-	  // Compute numDocs and totalTermFrequency b/c Indexer is not serializable.
 	  this._numDocs = _documents.size();
 	  
 	  this.cachedPtrArray = new int[_dictionary.size()];
