@@ -33,14 +33,10 @@ import edu.nyu.cs.cs2580.SearchEngine.Options;
 /**
  * @CS2580: Implement this class for HW2.
  */
-<<<<<<< Updated upstream
-public class IndexerInvertedCompressed extends Indexer {
-=======
 public class IndexerInvertedCompressed extends Indexer implements Serializable {
 	
       private static final long serialVersionUID = 1077111905740085031L;
 
->>>>>>> Stashed changes
 	  // Maps each term to their integer representation
 	  private Map<String, Integer> _dictionary = new HashMap<String, Integer>(); 
 
@@ -381,103 +377,6 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 				  doc_id = candidate;
 		  }
 	  }
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
-	  
-	  private boolean containsPhrase (Vector<String> phrase, int docid) {
-		  Integer pos = -1;
-		  while (true) {
-			  boolean contains = true;
-			  List<Integer> positions = new ArrayList<Integer>();
-
-		      for (String term : phrase) {
-		        Integer p = nextPos(term, docid, pos);
-		        if (p == null) {
-		          return false;
-		        }
-		        positions.add(p);
-		      }
-
-		      int p1 = positions.get(0);
-		      for (int i = 1; i < positions.size(); i++) {
-		        int p2 = positions.get(i);
-		        if ((p1 + 1) != p2) {
-		          contains = false;
-		          break;
-		        }
-		        p1 = p2;
-		      }
-		      if (contains) {
-		        return true;
-		      }
-		      pos = Collections.min(positions);
-		  }
-	  }
-	  
-	  private Integer nextPos(String token, int docid, int pos) {
-		  Integer idx = _dictionary.get(token);
-		  if (null == idx)
-			  return null;
-		  
-		  if (!tmap.containsKey(idx)) {
-			  try {
-				  tmap.put(idx, fetchInfo(idx));
-			  }
-			  catch(Exception e) {}
-		  }
-		  ArrayList<Posting> pl = tmap.get(idx).postingList;
-		  Posting p = searchPosting(pl,docid);
-		  if (null == p)
-			  return null;
-		  ArrayList<Integer> oc = p.oc;
-		  return searchOc(oc,pos);
-	  }
-	  
-	  private Posting searchPosting(ArrayList<Posting> pl, int docid) {
-		  for (int i=0;i<pl.size();i++) {
-			  if (pl.get(i).docid == docid)
-				  return pl.get(i);
-			  if (pl.get(i).docid > docid)
-				  return null;
-		  }
-		  return null;
-	  }
-	  
-	  private Integer searchOc(ArrayList<Integer> list, int pos) {
-		  for (int i=0;i<list.size();i++) {
-			  if (list.get(i)>pos)
-				  return list.get(i);
-		  }
-		  return null;
-	  }
-	  
-	  private Integer nextDoc_withAllTokens(Vector<String> tokens, int docid) {
-		  if (0 == tokens.size())
-			  return null;
-		  boolean flag = true;
-		  int prev = 0;
-		  int max = -1;
-		  for (int i=0;i<tokens.size();i++) {
-			  Integer pos = next(tokens.get(i),docid);
-			  if (null == pos)
-				  return null;
-			  if (flag && i != 0 && pos != prev)
-				  flag = false;
-			  prev = pos;
-			  max = Math.max(max,pos);
-		  }
-		  if (flag)
-			  return prev;
-		  else
-			  return nextDoc_withAllTokens(tokens,max-1);
-	  } 
-	  
-	  private int[] cachedPtrArray;
-<<<<<<< Updated upstream
-	  
-=======
 	  
 	  private boolean containsPhrase (Vector<String> phrase, int docid) {
 		  Integer pos = -1;
@@ -569,10 +468,6 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 	  
 	  private int[] cachedPtrArray;
 	  
->>>>>>> Stashed changes
-=======
-	  
->>>>>>> Stashed changes
 	  private Integer next(String token, int docid) {
 		  Integer idx = _dictionary.get(token);
 		  if (null == idx)
