@@ -39,8 +39,7 @@ public class RankerConjunctive extends Ranker {
     while ((scoredDoc = rankQueue.poll()) != null) {
       results.add(scoredDoc);
     }
-    //Collections.sort(results, Collections.reverseOrder());
-    Collections.reverse(results); // actually there is no need to reverse, all the scores are 1.0
+    Collections.sort(results, Collections.reverseOrder());
     return results;
   }
 }

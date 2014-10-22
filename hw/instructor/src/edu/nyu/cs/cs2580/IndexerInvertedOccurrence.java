@@ -107,10 +107,16 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  writer = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(termIndexFile)));
 	  writer.writeObject(_dictionary);
 	  writer.close();
+	  
+	  String totalFreqFileName = _options._indexPrefix + "/invertedOccuranceFreq.idx";
+	  RandomAccessFile freqFile = new RandomAccessFile(totalFreqFileName, "rw");
+	  freqFile.writeLong(_totalTermFrequency);
+	  freqFile.close();
   }
 
   private void processDocument(File file, Stemmer stemmer) {		  
 	  int doc_id = _documents.size();
+	  long total_words = 0;
       DocumentIndexed doc = new DocumentIndexed(doc_id);
       doc.setUrl(Integer.toString(doc_id));
          
@@ -119,7 +125,6 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
       try {
     	  org.jsoup.nodes.Document document = Jsoup.parse(file, null);
     	  doc.setTitle(document.title());
-		  _documents.add(doc);
 		  text = document.body().text();
 		  document = null;		    	  
       } catch (IOException e) {
@@ -142,6 +147,8 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 			  if(token.equals("")) {
 				  continue;
 			  } else {
+				  _totalTermFrequency++;
+				  total_words++;
 				  int idx;				  
 				  if (_dictionary.containsKey(token)) {
 					  idx = _dictionary.get(token);
@@ -169,6 +176,8 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  for (int tid: uniq_set) {
 		  tmap.get(tid).docFreq += 1;
 	  }
+	  doc.set_totalWords(total_words);
+	  _documents.add(doc);
   }
   
   private void dump(int n) throws IOException {
@@ -256,6 +265,13 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 		  r.close();
 	  writer.close();
 	  offsetFile.close();
+	  
+	// delete all the partial files
+	  for (int i = 1;i <= num;i++) {
+		  String partialFile = _options._indexPrefix + "/invertedOccurance_" + Integer.toString(i) + ".idx";
+		  File file = new File(partialFile);
+		  file.delete();
+	  }
   }
   
   private long writeToIndex(int termId,ArrayList<TokenInfo> list,BufferedWriter writer) throws IOException{
@@ -305,7 +321,9 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
   
   private int getId(String line) {
 	  Scanner s = new Scanner(line);
-	  return Integer.parseInt(s.next());
+	  int ret = Integer.parseInt(s.next());
+	  s.close();
+	  return ret;
   }
   
   private TokenInfo getInfo(String line) {
@@ -323,6 +341,7 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 		  info.postingList.add(p);
 		  
 	  }
+	  s.close();
 	  return info;
   }
 
@@ -342,6 +361,11 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	 
 	 // Compute numDocs and totalTermFrequency b/c Indexer is not serializable.
 	 this._numDocs = _documents.size();
+	 String totalFreqFileName = _options._indexPrefix + "/invertedOccuranceFreq.idx";
+	 RandomAccessFile freqFile = new RandomAccessFile(totalFreqFileName, "r");
+	 this._totalTermFrequency = freqFile.readLong();
+	 System.out.println("total corpus freq: " + this._totalTermFrequency);
+	 freqFile.close();
 	  
 	 this.cachedPtrArray = new int[_dictionary.size()];
 	 Arrays.fill(cachedPtrArray,0);
@@ -359,9 +383,7 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
   @Override
   public DocumentIndexed nextDoc(Query query, int doc_id) {
 	  while(true) {
-		  System.out.println(query._tokens);
 		  Integer candidate = nextDoc_withAllTokens(query._tokens,doc_id);
-		  System.out.println(candidate);
 		  if (candidate == null)
 			  return null;
 		  boolean containAll = true;
@@ -498,13 +520,13 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  return pl.get(cachedPtr).docid;
   }
 
-@Override
+  @Override
   public int corpusDocFrequencyByTerm(String term) {
 	Integer idx = _dictionary.get(term);
 	  if (null == idx)
 		  return 0;
 	  else
-		  return tmap.get(idx).corpusFreq;
+		  return cachedInfo(idx).docFreq;
   }
 
   @Override
@@ -513,24 +535,42 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  if (null == idx)
 		  return 0;
 	  else
-		  return tmap.get(idx).docFreq;
+		  return cachedInfo(idx).corpusFreq;
   }
 
   @Override
   public int documentTermFrequency(String term, String url) {
+	  int docid = Integer.parseInt(url);
+	  if (docid >= _numDocs)
+		  return 0;
+	  
+	  Integer idx = _dictionary.get(term);
+	  if (idx == null)
+		  return 0;
+	  
+	  TokenInfo info = cachedInfo(idx);
+	  ArrayList<Posting> pl = info.postingList;
+	  for (int i=0;i<pl.size();i++) {
+		  if (pl.get(i).docid == docid)
+			  return pl.get(i).oc.size();
+		  if (pl.get(i).docid > docid)
+			  return 0;
+	  }
 	  return 0;
   }
   
-  //get the term frequency of a term in the document with the docid
-  public int documentTermFrequency(String term, Integer docid) {
-	  Integer idx = _dictionary.get(term);
-	  if (null == idx)
-		  return 0;
+  private TokenInfo cachedInfo(int idx) {
+	  if (tmap.containsKey(idx))
+		  return tmap.get(idx);
 	  else {
-		  //if (docid < _termFrequencyMapArray.size())
-			  //return _termFrequencyMapArray.get(docid).get(idx);
+		  TokenInfo info = null;
+		  try {
+			  info = fetchInfo(idx);
+		  }
+		  catch(Exception e) {}
+		  tmap.put(idx, info);
+		  return info;
 	  }
-	  return 0;
   }
   
   private String stem(String origin, Stemmer stemmer) {

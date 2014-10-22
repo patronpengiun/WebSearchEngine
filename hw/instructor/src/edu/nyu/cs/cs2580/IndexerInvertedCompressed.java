@@ -4,6 +4,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -74,7 +75,6 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 	        	  count++;
 	        	  temp++;
 	        	  System.out.println(listFiles.length + " / " + count);       	  
-	              //System.out.println(file.getName());
 	              
 	              if (file.isFile()) {
 	            	  processDocument(file, stemmer); 
@@ -94,7 +94,7 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  
 		  System.out.println("merging pieces");
 		  merge(num_pieces);
-	     
+		  
 		  System.out.println("store documents idx");
 		  String documentIndexFile = _options._indexPrefix + "/invertedCompressDoc.idx";
 		  ObjectOutputStream writer =
@@ -107,10 +107,16 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  writer = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(termIndexFile)));
 		  writer.writeObject(_dictionary);
 		  writer.close();
+		  
+		  String totalFreqFileName = _options._indexPrefix + "/invertedCompressFreq.idx";
+		  RandomAccessFile freqFile = new RandomAccessFile(totalFreqFileName, "rw");
+		  freqFile.writeLong(_totalTermFrequency);
+		  freqFile.close();
 	  }
 
 	  private void processDocument(File file, Stemmer stemmer) {		  
 		  int doc_id = _documents.size();
+		  long total_words = 0;
 	      DocumentIndexed doc = new DocumentIndexed(doc_id);
 	      doc.setUrl(Integer.toString(doc_id));
 	         
@@ -119,7 +125,6 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 	      try {
 	    	  org.jsoup.nodes.Document document = Jsoup.parse(file, null);
 	    	  doc.setTitle(document.title());
-			  _documents.add(doc);
 			  text = document.body().text();
 			  document = null;		    	  
 	      } catch (IOException e) {
@@ -142,6 +147,8 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 				  if(token.equals("")) {
 					  continue;
 				  } else {
+					  _totalTermFrequency++;
+					  total_words++;
 					  int idx;				  
 					  if (_dictionary.containsKey(token)) {
 						  idx = _dictionary.get(token);
@@ -169,6 +176,8 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  for (int tid: uniq_set) {
 			  tmap.get(tid).docFreq += 1;
 		  }
+		  doc.set_totalWords(total_words);
+		  _documents.add(doc);
 	  }
 	  
 	  private void dump(int n) throws IOException {
@@ -201,7 +210,7 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  return result;
 	  }
 
-	  private void merge (int num) throws IOException{
+	  private void merge(int num) throws IOException{
 		  BufferedReader[] readers= new BufferedReader[num];
 		  for (int i = 1;i <= num;i++) {
 			  String partialFile = _options._indexPrefix + "/invertedCompress_" + Integer.toString(i) + ".idx";
@@ -210,7 +219,7 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  }
 		  
 		  String mergedFile = _options._indexPrefix + "/invertedCompressMerged.idx";
-		  BufferedWriter writer = new BufferedWriter(new FileWriter(mergedFile));
+		  DataOutputStream writer = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(mergedFile)));
 		  
 		  String offsetFileName = _options._indexPrefix + "/invertedCompressOffset.idx";
 		  RandomAccessFile offsetFile = new RandomAccessFile(offsetFileName, "rw");
@@ -256,9 +265,16 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 			  r.close();
 		  writer.close();
 		  offsetFile.close();
+		  
+		  // delete all the partial files
+		  for (int i = 1;i <= num;i++) {
+			  String partialFile = _options._indexPrefix + "/invertedCompress_" + Integer.toString(i) + ".idx";
+			  File file = new File(partialFile);
+			  file.delete();
+		  }
 	  }
 	  
-	  private long writeToIndex(int termId,ArrayList<TokenInfo> list,BufferedWriter writer) throws IOException{
+	  private long writeToIndex(int termId,ArrayList<TokenInfo> list,DataOutputStream writer) throws IOException{
 		  long result = 0L;
 		  TokenInfo info = new TokenInfo();
 		  info.corpusFreq = 0;
@@ -269,21 +285,37 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 			  info.docFreq += i.docFreq;
 			  info.postingList.addAll(i.postingList);
 		  }
-		  String temp = termId + " " + info.corpusFreq + " " + info.docFreq;
+		  
+		  byte[] temp;
+		  
+		  temp = vByte(termId);
 		  writer.write(temp);
-		  result += temp.length();
-		  for (Posting posting: info.postingList) {
-			  temp = " " + posting.docid + "," + toOccuranceListString(posting.oc);
-			  result += temp.length();
+		  result += temp.length;
+		  temp = vByte(info.corpusFreq);
+		  writer.write(temp);
+		  result += temp.length;
+		  temp = vByte(info.docFreq);
+		  writer.write(temp);
+		  result += temp.length;
+		  for (Posting p: info.postingList) {
+			  temp = vByte(p.docid);
 			  writer.write(temp);
+			  result += temp.length;
+			  temp = vByte(p.oc.size());
+			  writer.write(temp);
+			  result += temp.length;
+			  for (int o: p.oc) {
+				  temp = vByte(o);
+				  writer.write(temp);
+				  result += temp.length;
+			  }
 		  }
-		  result++;
-		  writer.newLine();
 		  return result;
 	  }
 	  
 	  private TokenInfo fetchInfo(int id) throws FileNotFoundException, IOException{
 		  long offset;
+		  long next_offset;
 		  String offsetFileName = _options._indexPrefix + "/invertedCompressOffset.idx";
 		  RandomAccessFile offsetFile = new RandomAccessFile(offsetFileName, "r");
 		  if (id == 0)
@@ -293,19 +325,49 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 			  offset = offsetFile.readLong();
 		  }
 		  
+		  offsetFile.seek(8L * id);
+		  next_offset = offsetFile.readLong();
+		  
+		  int size = (int)(next_offset - offset);
 		  String indexFileName = _options._indexPrefix + "/invertedCompressMerged.idx";
 		  RandomAccessFile indexFile = new RandomAccessFile(indexFileName,"r");
 		  indexFile.seek(offset);
-		  String line = indexFile.readLine();
+		  
+		  ArrayList<Byte> byte_list = new ArrayList<Byte>();
+		  for (int i=0;i<size;i++) {
+			  byte_list.add(indexFile.readByte());
+		  }
+		  List<Integer> int_list = decodeByte(byte_list);
+		  
+		  TokenInfo info = new TokenInfo();
+		  info.corpusFreq = int_list.get(1);
+		  info.docFreq = int_list.get(2);
+		  info.postingList = new ArrayList<Posting>();
+		  int cur = 3;
+		  while (cur<int_list.size()) {
+			  int docid = int_list.get(cur);
+			  cur++;
+			  Posting p = new Posting(docid);
+			  int oc_count = int_list.get(cur);
+			  cur++;
+			  for (int i=0;i<oc_count;i++) {
+				  p.oc.add(int_list.get(cur));
+				  cur++;
+			  }
+			  info.postingList.add(p);
+		  }
+		  
 		  offsetFile.close();
 		  indexFile.close();
-		  return getInfo(line);
+		  return info;
 	  }
 	  
 	  
 	  private int getId(String line) {
 		  Scanner s = new Scanner(line);
-		  return Integer.parseInt(s.next());
+		  int ret = Integer.parseInt(s.next());
+		  s.close();
+		  return ret;
 	  }
 	  
 	  private TokenInfo getInfo(String line) {
@@ -323,6 +385,7 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 			  info.postingList.add(p);
 			  
 		  }
+		  s.close();
 		  return info;
 	  }
 
@@ -342,7 +405,13 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		 
 		 // Compute numDocs and totalTermFrequency b/c Indexer is not serializable.
 		 this._numDocs = _documents.size();
-		  
+		 String totalFreqFileName = _options._indexPrefix + "/invertedCompressFreq.idx";
+		 RandomAccessFile freqFile = new RandomAccessFile(totalFreqFileName, "r");
+		 this._totalTermFrequency = freqFile.readLong();
+		 System.out.println("total corpus freq: " + this._totalTermFrequency);
+		 freqFile.close();
+
+		 
 		 this.cachedPtrArray = new int[_dictionary.size()];
 		 Arrays.fill(cachedPtrArray,0);
 		 
@@ -359,9 +428,7 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 	  @Override
 	  public DocumentIndexed nextDoc(Query query, int doc_id) {
 		  while(true) {
-			  System.out.println(query._tokens);
 			  Integer candidate = nextDoc_withAllTokens(query._tokens,doc_id);
-			  System.out.println(candidate);
 			  if (candidate == null)
 				  return null;
 			  boolean containAll = true;
@@ -498,13 +565,13 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  return pl.get(cachedPtr).docid;
 	  }
 
-	@Override
+	  @Override
 	  public int corpusDocFrequencyByTerm(String term) {
 		Integer idx = _dictionary.get(term);
 		  if (null == idx)
 			  return 0;
 		  else
-			  return tmap.get(idx).corpusFreq;
+			  return cachedInfo(idx).docFreq;
 	  }
 
 	  @Override
@@ -513,24 +580,42 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  if (null == idx)
 			  return 0;
 		  else
-			  return tmap.get(idx).docFreq;
+			  return cachedInfo(idx).corpusFreq;
 	  }
 
 	  @Override
 	  public int documentTermFrequency(String term, String url) {
+		  int docid = Integer.parseInt(url);
+		  if (docid >= _numDocs)
+			  return 0;
+		  
+		  Integer idx = _dictionary.get(term);
+		  if (idx == null)
+			  return 0;
+		  
+		  TokenInfo info = cachedInfo(idx);
+		  ArrayList<Posting> pl = info.postingList;
+		  for (int i=0;i<pl.size();i++) {
+			  if (pl.get(i).docid == docid)
+				  return pl.get(i).oc.size();
+			  if (pl.get(i).docid > docid)
+				  return 0;
+		  }
 		  return 0;
 	  }
 	  
-	  //get the term frequency of a term in the document with the docid
-	  public int documentTermFrequency(String term, Integer docid) {
-		  Integer idx = _dictionary.get(term);
-		  if (null == idx)
-			  return 0;
+	  private TokenInfo cachedInfo(int idx) {
+		  if (tmap.containsKey(idx))
+			  return tmap.get(idx);
 		  else {
-			  //if (docid < _termFrequencyMapArray.size())
-				  //return _termFrequencyMapArray.get(docid).get(idx);
+			  TokenInfo info = null;
+			  try {
+				  info = fetchInfo(idx);
+			  }
+			  catch(Exception e) {}
+			  tmap.put(idx, info);
+			  return info;
 		  }
-		  return 0;
 	  }
 	  
 	  private String stem(String origin, Stemmer stemmer) {
@@ -540,6 +625,74 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 	      return stemmer.toString();
 	  }
 	  
+	  private byte[] vByte(int num) {
+		  byte[] ret = null;
+		  if (num < 128) {
+			  ret = new byte[1];
+		      ret[0] = (byte) (num + 128);
+		      return ret;
+		  } else if (num < 16384) {
+			  ret = new byte[2];
+		      ret[0] = (byte) (num / 128);
+		      ret[1] = (byte) (num % 128 + 128);
+		  } else if (num < 2097152) {
+		      ret = new byte[3];
+		      ret[0] = (byte) (num / 16384);
+		      byte[] rest = vByte(num % 16384);
+		      if (rest.length == 1) {
+		    	  ret[1] = 0;
+		    	  ret[2] = rest[0];
+		      } else {
+		    	  ret[1] = rest[0];
+		    	  ret[2] = rest[1];
+		      }
+		  } else if (num < 268435456) {
+			  ret = new byte[4];
+		      ret[0] = (byte) (num / 2097152);
+		      byte[] rest = vByte(num % 2097152);
+		      if (rest.length == 1) {
+		    	  ret[1] = 0;
+		    	  ret[2] = 0;
+		    	  ret[3] = rest[0];
+		      } else if (rest.length == 2) {
+		    	  ret[1] = 0;
+		    	  ret[2] = rest[0];
+		    	  ret[3] = rest[1];
+		      } else if (rest.length == 3) {
+		    	  ret[1] = rest[0];
+		    	  ret[2] = rest[1];
+		    	  ret[3] = rest[2];
+		      }
+		  }
+		  return ret;
+	  }
+
+	  private List<Integer> decodeByte(List<Byte> list) {
+		  List<Byte> byteList = new ArrayList<Byte>();
+		  List<Integer> ret = new ArrayList<Integer>();
+		  for (int i = 0; i < list.size(); i++) {
+			  if (list.get(i) < 0) {
+				  byteList.add(list.get(i));
+				  ret.add(convert(byteList));
+				  byteList.clear();
+			  } else {
+				  byteList.add(list.get(i));
+			  }
+		  }
+		  return ret;
+	  }
+
+	  private int convert(List<Byte> byteList) {
+		  if (byteList.size() == 1) {
+			  return (byteList.get(0) + 128);
+		  } else if (byteList.size() == 2) {
+			  return (byteList.get(0) * 128 + (byteList.get(1) + 128));
+		  } else if (byteList.size() == 3) {
+			  return (byteList.get(0) * 16384 + byteList.get(1) * 128 + (byteList.get(2) + 128));
+		  } else {
+			  return (byteList.get(0) * 2097152 + byteList.get(1) * 16384 + byteList.get(2) * 128 + (byteList.get(3) + 128));
+		  }
+	  }
 	  
 	  class Posting {
 		  public int docid;

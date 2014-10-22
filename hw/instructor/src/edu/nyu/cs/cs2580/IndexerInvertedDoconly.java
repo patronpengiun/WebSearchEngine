@@ -1,5 +1,7 @@
 package edu.nyu.cs.cs2580;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -79,15 +81,20 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  System.out.println("store documents idx");
 	  String documentIndexFile = _options._indexPrefix + "/invertedOnlyDoc.idx";
 	  ObjectOutputStream writer =
-		  new ObjectOutputStream(new FileOutputStream(documentIndexFile));
+		  new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(documentIndexFile)));
 	  writer.writeObject(_documents);
 	  writer.close();
 		  
 	  System.out.println("store dictionary idx");
 	  String termIndexFile = _options._indexPrefix + "/invertedOnlyTerm.idx";
-	  writer = new ObjectOutputStream(new FileOutputStream(termIndexFile));
+	  writer = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(termIndexFile)));
 	  writer.writeObject(_dictionary);
 	  writer.close();
+	  
+	  String totalFreqFileName = _options._indexPrefix + "/invertedOnlyFreq.idx";
+	  RandomAccessFile freqFile = new RandomAccessFile(totalFreqFileName, "rw");
+	  freqFile.writeLong(_totalTermFrequency);
+	  freqFile.close();
   }
 
   @Override
@@ -95,17 +102,22 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  System.out.println("loading indexedDocVector");
 	  String documentIndexFile = _options._indexPrefix + "/invertedOnlyDoc.idx";
 	  ObjectInputStream reader =
-		  new ObjectInputStream(new FileInputStream(documentIndexFile));
+		  new ObjectInputStream(new BufferedInputStream(new FileInputStream(documentIndexFile)));
 	  this._documents = (Vector<edu.nyu.cs.cs2580.Document>)reader.readObject();
 	  reader.close();
 	  
 	  System.out.println("loading dictionary");
 	  String termIndexFile = _options._indexPrefix + "/invertedOnlyTerm.idx";
-	  reader = new ObjectInputStream(new FileInputStream(termIndexFile));
+	  reader = new ObjectInputStream(new BufferedInputStream(new FileInputStream(termIndexFile)));
 	  this._dictionary = (Map<String, Integer>)reader.readObject();
 	  reader.close();
 	  
 	  this._numDocs = _documents.size();
+	  String totalFreqFileName = _options._indexPrefix + "/invertedOnlyFreq.idx";
+	  RandomAccessFile freqFile = new RandomAccessFile(totalFreqFileName, "r");
+	  this._totalTermFrequency = freqFile.readLong();
+	  System.out.println("total corpus freq: " + this._totalTermFrequency);
+	  freqFile.close();
 	  
 	  this.cachedPtrArray = new int[_dictionary.size()];
 	  Arrays.fill(cachedPtrArray,0);
@@ -176,11 +188,11 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 
   @Override
   public int corpusDocFrequencyByTerm(String term) {
-	  Integer idx = _dictionary.get(term);
+	Integer idx = _dictionary.get(term);
 	  if (null == idx)
 		  return 0;
 	  else
-		  return tmap.get(idx).corpusFreq;
+		  return cachedInfo(idx).docFreq;
   }
 
   @Override
@@ -189,24 +201,53 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  if (null == idx)
 		  return 0;
 	  else
-		  return tmap.get(idx).docFreq;
+		  return cachedInfo(idx).corpusFreq;
   }
 
   @Override
   public int documentTermFrequency(String term, String url) {
-    SearchEngine.Check(false, "Not implemented!");
-    return 0;
+	  int docid = Integer.parseInt(url);
+	  if (docid >= _numDocs)
+		  return 0;
+	  
+	  Integer idx = _dictionary.get(term);
+	  if (idx == null)
+		  return 0;
+	  
+	  TokenInfo info = cachedInfo(idx);
+	  ArrayList<IntPair> pl = info.postingList;
+	  for (int i=0;i<pl.size();i++) {
+		  if (pl.get(i).first == docid)
+			  return pl.get(i).second;
+		  if (pl.get(i).first > docid)
+			  return 0;
+	  }
+	  return 0;
+  }
+  
+  private TokenInfo cachedInfo(int idx) {
+	  if (tmap.containsKey(idx))
+		  return tmap.get(idx);
+	  else {
+		  TokenInfo info = null;
+		  try {
+			  info = fetchInfo(idx);
+		  }
+		  catch(Exception e) {}
+		  tmap.put(idx, info);
+		  return info;
+	  }
   }
   
   private void constructSingleDocument(String path, Stemmer stemmer) {
 	  int doc_id = _documents.size();
+	  long total_words = 0;
 	  DocumentIndexed doc = new DocumentIndexed(doc_id);
 	  doc.setUrl(Integer.toString(doc_id));
 	  
 	  try {
 		  org.jsoup.nodes.Document document = Jsoup.parse(new File(path), null);
 		  doc.setTitle(document.title());
-		  _documents.add(doc);
 		  String text = document.body().text();
 		  document = null;
 		  Scanner[] sr = new Scanner[2];
@@ -219,6 +260,8 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 				  if (token.equals(""))
 					  continue;
 				  else {
+					  _totalTermFrequency++;
+					  total_words++;
 					  int idx;
 					  if (_dictionary.containsKey(token)) {
 						  idx = _dictionary.get(token);
@@ -242,6 +285,8 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 		  for (int tid: uniq_set) {
 			  tmap.get(tid).docFreq += 1;
 		  }
+		  doc.set_totalWords(total_words);
+		  _documents.add(doc);
 	  }
 	  catch (IOException e) {
 		  System.err.println(e.getMessage());
@@ -321,6 +366,13 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 		  r.close();
 	  writer.close();
 	  offsetFile.close();
+	  
+	  // delete all the partial files
+	  for (int i = 1;i <= num;i++) {
+		  String partialFile = _options._indexPrefix + "/invertedDocOnly_" + Integer.toString(i) + ".idx";
+		  File file = new File(partialFile);
+		  file.delete();
+	  }
   }
   
   private TokenInfo fetchInfo(int id) throws FileNotFoundException, IOException{
@@ -345,7 +397,9 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
   
   private int getId(String line) {
 	  Scanner s = new Scanner(line);
-	  return Integer.parseInt(s.next());
+	  int ret = Integer.parseInt(s.next());
+	  s.close();
+	  return ret;
   }
   
   private TokenInfo getInfo(String line) {
@@ -359,6 +413,7 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 		  String[] e = s.next().split(",");
 		  info.postingList.add(new IntPair(Integer.parseInt(e[0]),Integer.parseInt(e[1])));
 	  }
+	  s.close();
 	  return info;
   }
   
