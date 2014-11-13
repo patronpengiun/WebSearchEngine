@@ -66,7 +66,7 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 		  if (file.isFile()) {
 			  constructSingleDocument(file.getAbsolutePath(),stemmer);
 		  }
-		  if (temp > numOfDoc / 10) {
+		  if (temp > numOfDoc / 20) {
 			  temp = 0;
 			  num_pieces++;
 			  dump(num_pieces);
