@@ -1,12 +1,9 @@
 package edu.nyu.cs.cs2580;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.io.ObjectInputStream;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -15,8 +12,8 @@ public class Spearman {
 	public static void main(String[] args) {
 
 		try {
-			List<PageRank> pageRankList = initializePageRanks(args[0]);
-			List<NumViews> numViewsList = initializeNumViews(args[1]);
+			Map<String, Double> pageRankList = deserializePagerank(args[0]);
+			Map<String, Integer> numViewsList = deserializeNumviews(args[1]);
 			double score = getScore(pageRankList, numViewsList);
 			System.out.println("Spearman Score: " + score);
 		} catch (NumberFormatException e) {
@@ -26,88 +23,75 @@ public class Spearman {
 		}
 	}
 
-	private static double getScore(List<PageRank> pageRankList,
-			List<NumViews> numViewsList) {
-		Collections.sort(pageRankList, new PageRankComparator());
-		Collections.sort(numViewsList, new NumViewsComparator());
+	private static double getScore(Map<String, Double> pageranks,
+			Map<String, Integer> numviews) {
 
-		Map<Integer, Integer> prRanks = new HashMap<Integer, Integer>();
-		Map<Integer, Integer> nvRanks = new HashMap<Integer, Integer>();
-
-		int i = 1;
-		for (PageRank d : pageRankList) {
-			prRanks.put(d.getDocid(), i);
-			i++;
+		double z = 0;
+		double zsum = 0;
+		Set<String> prset = pageranks.keySet();
+		
+		for (String url: prset) {
+			zsum += pageranks.get(url);
 		}
-		pageRankList.clear();
-
-		i = 1;
-		for (NumViews d : numViewsList) {
-			nvRanks.put(d.getDocid(), i);
-			i++;
-		}
-
-		numViewsList.clear();
+		z = zsum / pageranks.size();
+		
 		double sum = 0;
-		Set<Integer> set = prRanks.keySet();
-
-		for (int did : set) {
-			int xk = prRanks.get(did);
-			int yk;
-			if (nvRanks.containsKey(did))
-				yk = nvRanks.get(did);
+		double xProductSum = 0;
+		double yProductSum = 0;
+		
+		int numviewSize = numviews.keySet().size();
+		for (String durl : prset) {
+			Double xk = pageranks.get(durl);
+			Integer yk = null;
+			if (numviews.containsKey(durl))
+				yk = numviews.get(durl);
 			else
-				yk = i++;
+				yk = numviewSize++;
 
-			sum += ((xk - yk) * (xk - yk));
+			sum += ((xk - z) * (xk - z));
+			xProductSum += Math.sqrt(pageranks.get(durl) - z);
+			yProductSum += Math.sqrt(numviews.get(durl) - z);
 		}
-
-		double num = 6 * sum;
-		double denom = set.size() * (Math.pow(set.size(), 2) - 1);
-		double output = (1 - (num / denom));
-
-		return output;
+	
+		return sum / (xProductSum * yProductSum);
 	}
 
-	private static List<NumViews> initializeNumViews(String string)
-			throws NumberFormatException, IOException {
-		List<NumViews> numViewsList = new ArrayList<NumViews>();
-		BufferedReader ois = new BufferedReader(new FileReader(string));
-		String o;
-
-		while (((o = ois.readLine()) != null)) {
-			String[] eachLine = o.split(" ");
-			String docName = eachLine[0];
-			int docid = Integer.parseInt(eachLine[2]);
-			int temp = Integer.parseInt(eachLine[1]);
-
-			NumViews numViews = new NumViews(docid, docName, temp);
-			numViewsList.add(numViews);
-		}
-		ois.close();
-
-		return numViewsList;
-	}
-
-	private static List<PageRank> initializePageRanks(String string)
+	@SuppressWarnings("unchecked")
+	private static Map<String, Double> deserializePagerank(String string)
 			throws IOException {
-		List<PageRank> pageRankList = new ArrayList<PageRank>();
+		Map<String, Double> pageranks = new HashMap<String, Double>();
+		try {
+			FileInputStream fileIn = new FileInputStream(string);
+			ObjectInputStream in = new ObjectInputStream(fileIn);
+			pageranks = (Map<String, Double>) in.readObject();
 
-		StringBuilder builder = new StringBuilder(string);
-		BufferedReader ois = new BufferedReader(new FileReader(
-				builder.toString()));
-		String o;
-
-		while (((o = ois.readLine()) != null)) {
-			String[] eachLine = o.split(" ");
-			int docid = Integer.parseInt(eachLine[0]);
-			double pr = Double.parseDouble(eachLine[1]);
-
-			PageRank tmp = new PageRank(docid, pr);
-			pageRankList.add(tmp);
+			in.close();
+			fileIn.close();       
+		} catch(IOException i) {
+		         i.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		ois.close();
-
-		return pageRankList;
+		return pageranks;
+	}
+	
+	@SuppressWarnings("unchecked")
+	private static Map<String, Integer> deserializeNumviews(String string)
+			throws NumberFormatException, IOException {
+		Map<String, Integer> numviews = new HashMap<String, Integer>();
+		try {
+			FileInputStream fileIn = new FileInputStream(string);
+			ObjectInputStream in = new ObjectInputStream(fileIn);
+			numviews = (Map<String, Integer>) in.readObject();
+			in.close();
+			fileIn.close();       
+		} catch(IOException i) {
+		         i.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return numviews;
 	}
 }
