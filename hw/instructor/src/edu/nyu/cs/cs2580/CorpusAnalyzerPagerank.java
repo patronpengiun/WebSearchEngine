@@ -29,7 +29,7 @@ public class CorpusAnalyzerPagerank extends CorpusAnalyzer {
   }
   
   // hash map to store all the pages we have in the corpus and their page rank score
-  private HashMap<String,Double> links = new HashMap<String,Double>();
+  private HashMap<String,Float> links = new HashMap<String,Float>();
 
   /**
    * This function processes the corpus as specified inside {@link _options}
@@ -60,7 +60,7 @@ public class CorpusAnalyzerPagerank extends CorpusAnalyzer {
 	// add all the internal links(filenames) to the hash map
 	for (File doc: docs) {
 		if (isValidDocument(doc)) {
-			links.put(convertToUTF8(doc.getName()),1.0);
+			links.put(convertToUTF8(doc.getName()),1.0f);
 		}
 	}
 	
@@ -72,8 +72,6 @@ public class CorpusAnalyzerPagerank extends CorpusAnalyzer {
 		prepareSingleDoc(doc,writer);
 	}
 	writer.close();
-	
-	System.out.println("graph construction completed");
   }
   
   /**
@@ -94,11 +92,11 @@ public class CorpusAnalyzerPagerank extends CorpusAnalyzer {
     System.out.println("Computing using " + this.getClass().getName());
     
     int steps = 1;
-    double lambda = 0.1;
+    float lambda = 0.1f;
     
     // iterative computation
     for (int i=0;i<steps;i++) {
-    	HashMap<String,Double> tempMap = new HashMap<String,Double>();
+    	HashMap<String,Float> tempMap = new HashMap<String,Float>();
         for (String link: links.keySet()) {
         	tempMap.put(link, lambda / links.size());
         }
@@ -106,18 +104,13 @@ public class CorpusAnalyzerPagerank extends CorpusAnalyzer {
     	String graphFile = _options._indexPrefix + "/graphFile";
 		BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(graphFile),"UTF8"));
 		String line = null;
-		int no_l = 0;
 		while ((line = reader.readLine()) != null) {
-			System.out.println("read the " + (++i) + " line");
 			Scanner s = new Scanner(line).useDelimiter("\t");
 			String source = s.next();
 			int count = Integer.parseInt(reader.readLine());
-			System.out.println("adj count: " + count);
 			while (s.hasNext()) {
 				String target = s.next();
-				if (17 == i)
-					System.out.println(target);
-				tempMap.put(target,links.get(source) * (1-lambda) / count);
+				tempMap.put(target,tempMap.get(target) + links.get(source) * (1-lambda) / count);
 			}
 			s.close();
 		}

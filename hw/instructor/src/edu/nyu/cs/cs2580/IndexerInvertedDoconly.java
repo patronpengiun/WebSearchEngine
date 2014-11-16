@@ -58,10 +58,10 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
   public void constructIndex() throws IOException {
 	  // load pageRank and numViews
 	  CorpusAnalyzer analyzer = CorpusAnalyzer.Factory.getCorpusAnalyzerByOption(SearchEngine.OPTIONS);
-	  HashMap<String,Double> pageRankMap = (HashMap<String,Double>)analyzer.load();
+	  HashMap<String,Float> pageRankMap = (HashMap<String,Float>)analyzer.load();
 	  LogMiner miner = LogMiner.Factory.getLogMinerByOption(SearchEngine.OPTIONS);
 	  HashMap<String,Integer> numViewsMap = (HashMap<String,Integer>)miner.load();
-	  for (Map.Entry<String, Double> e: pageRankMap.entrySet()) {
+	  for (Map.Entry<String, Float> e: pageRankMap.entrySet()) {
 		  scoreMap.put(e.getKey(), new Pair(e.getValue(),numViewsMap.get(e.getKey())));
 	  }
 	  pageRankMap.clear();
@@ -262,7 +262,7 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
 	  DocumentIndexed doc = new DocumentIndexed(doc_id);
 	  String url = CorpusAnalyzer.convertToUTF8(new File(path).getName());
       doc.setUrl(url);
-      doc.setPageRank((float)scoreMap.get(url).pageRank);
+      doc.setPageRank(scoreMap.get(url).pageRank);
       doc.setNumViews(scoreMap.get(url).numViews);
 	  
 	  try {
@@ -494,9 +494,9 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
   
   //class to store pageRank and numViews
   class Pair {
-	  double pageRank;
+	  float pageRank;
 	  int numViews;
-	  Pair(double p, int n) {
+	  Pair(float p, int n) {
 		  pageRank = p;
 		  numViews = n;
 	  } 
