@@ -48,7 +48,7 @@ public class LogMinerNumviews extends LogMiner {
 	// add all the (filenames) to the hash map
 	for (File doc: docs) {
 		if (CorpusAnalyzer.isValidDocument(doc)) {
-			numViews.put(doc.getName(),0);
+			numViews.put(CorpusAnalyzer.convertToUTF8(doc.getName()),0);
 		}
 	}
 	
@@ -58,11 +58,14 @@ public class LogMinerNumviews extends LogMiner {
 	while ((line = reader.readLine()) != null) {
 		Scanner s = new Scanner(line);
 		s.next(); // skip the first token
-		String url = java.net.URLDecoder.decode(s.next(),"UTF-8");
-		int num = Integer.parseInt(s.next());
-		if (numViews.containsKey(url)) {
-			numViews.put(url, num);
+		try {
+			String url = java.net.URLDecoder.decode(s.next(),"UTF-8");
+			int num = Integer.parseInt(s.next());
+			if (numViews.containsKey(url)) {
+				numViews.put(url, num);
+			}
 		}
+		catch (Exception e) {}
 		s.close();
 	}
 	reader.close();

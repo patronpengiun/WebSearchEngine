@@ -10,8 +10,11 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Scanner;
 
@@ -57,18 +60,20 @@ public class CorpusAnalyzerPagerank extends CorpusAnalyzer {
 	// add all the internal links(filenames) to the hash map
 	for (File doc: docs) {
 		if (isValidDocument(doc)) {
-			links.put(doc.getName(),1.0);
+			links.put(convertToUTF8(doc.getName()),1.0);
 		}
 	}
 	
 	// the file in which we store the graph as adjacent list
 	String graphFile = _options._indexPrefix + "/graphFile";
-	BufferedWriter writer = new BufferedWriter(new FileWriter(graphFile));
+	BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(graphFile), "UTF-8"));
 	
 	for (File doc: docs) {
 		prepareSingleDoc(doc,writer);
 	}
 	writer.close();
+	
+	System.out.println("graph construction completed");
   }
   
   /**
@@ -99,17 +104,20 @@ public class CorpusAnalyzerPagerank extends CorpusAnalyzer {
         }
     	
     	String graphFile = _options._indexPrefix + "/graphFile";
-		BufferedReader reader = new BufferedReader(new FileReader(graphFile));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(graphFile),"UTF8"));
 		String line = null;
+		int no_l = 0;
 		while ((line = reader.readLine()) != null) {
+			System.out.println("read the " + (++i) + " line");
 			Scanner s = new Scanner(line).useDelimiter("\t");
 			String source = s.next();
-			int count = Integer.parseInt(s.next());
-			if (count > 0) {
-				while (s.hasNext()) {
-					String target = s.next();
-					tempMap.put(target,links.get(source) * (1-lambda) / count);
-				}
+			int count = Integer.parseInt(reader.readLine());
+			System.out.println("adj count: " + count);
+			while (s.hasNext()) {
+				String target = s.next();
+				if (17 == i)
+					System.out.println(target);
+				tempMap.put(target,links.get(source) * (1-lambda) / count);
 			}
 			s.close();
 		}
@@ -149,14 +157,21 @@ public class CorpusAnalyzerPagerank extends CorpusAnalyzer {
   }
   
   private void prepareSingleDoc(File doc, BufferedWriter writer) throws IOException{
+	  if (!isValidDocument(doc))
+		  return;
+	  
 	  HeuristicLinkExtractor extractor = new HeuristicLinkExtractor(doc);
-	  writer.write(extractor.getLinkSource() + "\t");
+	  writer.write(convertToUTF8(extractor.getLinkSource()) + "\t");
 	  String link = null;
-	  while ((link = extractor.getNextInCorpusLinkTarget()) != null) {
+	  int adj_count = 0;
+	  while ((link = convertToUTF8(extractor.getNextInCorpusLinkTarget())) != null) {
 		  if (links.containsKey(link)) {
 			  writer.write(link + "\t");
+			  adj_count++;
 		  }
 	  }
+	  writer.newLine();
+	  writer.write(Integer.toString(adj_count));
 	  writer.newLine();
   } 
 }

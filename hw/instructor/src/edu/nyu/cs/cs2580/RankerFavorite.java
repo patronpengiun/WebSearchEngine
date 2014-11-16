@@ -52,7 +52,7 @@ public class RankerFavorite extends Ranker {
 	  double result = 0;
 	  double lambda = 0.5;
 	  for (String token: query._tokens) {
-		  int seen_factor = _indexer.documentTermFrequency(token, doc.getUrl());
+		  int seen_factor = _indexer.documentTermFrequency(token, doc._docid);
 		  double prob = (1-lambda) * seen_factor / doc.get_totalWords() 
 				  + lambda * _indexer.corpusTermFrequency(token) / _indexer._totalTermFrequency;
 		  result += Math.log(prob) / Math.log(2);

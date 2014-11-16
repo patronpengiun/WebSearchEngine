@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -117,5 +118,14 @@ public abstract class CorpusAnalyzer {
       }
       return null;
     }
+  }
+  
+  public static String convertToUTF8(String s) {
+	  String ret = null;
+	  try {
+		  ret = new String(s.getBytes(Charset.defaultCharset()), "UTF-8");
+	  }
+	  catch(Exception e) {}
+	  return ret;
   }
 }

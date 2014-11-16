@@ -28,6 +28,7 @@ import java.util.Vector;
 
 import org.jsoup.Jsoup;
 
+import edu.nyu.cs.cs2580.IndexerInvertedCompressed.Pair;
 import edu.nyu.cs.cs2580.SearchEngine.Options;
 
 /**
@@ -46,6 +47,8 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
   //All the information about a token
   private HashMap<Integer,TokenInfo> tmap = new HashMap<Integer,TokenInfo>();
   
+  //PageRank and NumViews for each document
+  private HashMap<String,Pair> scoreMap = new HashMap<String,Pair>();
   
   // Provided for serialization
   public IndexerInvertedOccurrence() { }
@@ -57,6 +60,17 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 
   @Override
   public void constructIndex() throws IOException {
+	  // load pageRank and numViews
+	  CorpusAnalyzer analyzer = CorpusAnalyzer.Factory.getCorpusAnalyzerByOption(SearchEngine.OPTIONS);
+	  HashMap<String,Double> pageRankMap = (HashMap<String,Double>)analyzer.load();
+	  LogMiner miner = LogMiner.Factory.getLogMinerByOption(SearchEngine.OPTIONS);
+	  HashMap<String,Integer> numViewsMap = (HashMap<String,Integer>)miner.load();
+	  for (Map.Entry<String, Double> e: pageRankMap.entrySet()) {
+		  scoreMap.put(e.getKey(), new Pair(e.getValue(),numViewsMap.get(e.getKey())));
+	  }
+	  pageRankMap.clear();
+	  numViewsMap.clear();
+	  
 	  int num_pieces = 0;
 	  
 	  try {
@@ -71,10 +85,12 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
           Stemmer stemmer = new Stemmer();
           
           for (File file : listFiles) {
+        	  if (!CorpusAnalyzer.isValidDocument(file))
+    			  continue;
+        	  
         	  count++;
         	  temp++;
         	  System.out.println(listFiles.length + " / " + count);       	  
-              //System.out.println(file.getName());
               
               if (file.isFile()) {
             	  processDocument(file, stemmer); 
@@ -118,12 +134,15 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  int doc_id = _documents.size();
 	  long total_words = 0;
       DocumentIndexed doc = new DocumentIndexed(doc_id);
-      doc.setUrl(Integer.toString(doc_id));
+      String url = CorpusAnalyzer.convertToUTF8(file.getName());
+      doc.setUrl(url);
+      doc.setPageRank((float)scoreMap.get(url).pageRank);
+      doc.setNumViews(scoreMap.get(url).numViews);
          
 	  // the text of parsed document
 	  String text = "";	
       try {
-    	  org.jsoup.nodes.Document document = Jsoup.parse(file, null);
+    	  org.jsoup.nodes.Document document = Jsoup.parse(file, "UTF-8");
     	  doc.setTitle(document.title());
 		  text = document.body().text();
 		  document = null;		    	  
@@ -539,8 +558,7 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
   }
 
   @Override
-  public int documentTermFrequency(String term, String url) {
-	  int docid = Integer.parseInt(url);
+  public int documentTermFrequency(String term, int docid) {
 	  if (docid >= _numDocs)
 		  return 0;
 	  
@@ -608,4 +626,13 @@ public class IndexerInvertedOccurrence extends Indexer implements Serializable {
 	  }
   }
   
+  //class to store pageRank and numViews
+  class Pair {
+	  double pageRank;
+	  int numViews;
+	  Pair(double p, int n) {
+		  pageRank = p;
+		  numViews = n;
+	  } 
+  }
 }
