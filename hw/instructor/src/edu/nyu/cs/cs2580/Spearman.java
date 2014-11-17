@@ -8,13 +8,21 @@ import java.util.Map;
 import java.util.Set;
 
 public class Spearman {
-
+	
+	/**
+	 * Parameters: serialized pagerank.idx and numviews.idx
+	 * 
+	 * Computes the Spearman correlation of given pagerank and numviews
+	 * 
+	 * Usage:java -cp Spearman index/pagerank.idx indes/numviews.idx
+	 * 
+	 * **/
 	public static void main(String[] args) {
 
 		try {
-			Map<String, Double> pageRankList = deserializePagerank(args[0]);
+			Map<String, Float> pageRankList = deserializePagerank(args[0]);
 			Map<String, Integer> numViewsList = deserializeNumviews(args[1]);
-			double score = getScore(pageRankList, numViewsList);
+			float score = getScore(pageRankList, numViewsList);
 			System.out.println("Spearman Score: " + score);
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
@@ -23,47 +31,50 @@ public class Spearman {
 		}
 	}
 
-	private static double getScore(Map<String, Double> pageranks,
+	private static float getScore(Map<String, Float> pageranks,
 			Map<String, Integer> numviews) {
 
-		double z = 0;
-		double zsum = 0;
+		float z = 0;
+		float zsum = 0;
 		Set<String> prset = pageranks.keySet();
 		
 		for (String url: prset) {
 			zsum += pageranks.get(url);
 		}
 		z = zsum / pageranks.size();
+//		System.out.println("z: " + z);
 		
-		double sum = 0;
-		double xProductSum = 0;
-		double yProductSum = 0;
+		float sum = 0;
+		float xProductSum = 0;
+		float yProductSum = 0;
 		
 		int numviewSize = numviews.keySet().size();
 		for (String durl : prset) {
-			Double xk = pageranks.get(durl);
+			Float xk = pageranks.get(durl);
 			Integer yk = null;
 			if (numviews.containsKey(durl))
 				yk = numviews.get(durl);
 			else
 				yk = numviewSize++;
-
 			sum += ((xk - z) * (xk - z));
-			xProductSum += Math.sqrt(pageranks.get(durl) - z);
-			yProductSum += Math.sqrt(numviews.get(durl) - z);
+			xProductSum += Math.pow((double)(pageranks.get(durl) - z), 2);
+			yProductSum += Math.pow((double)(numviews.get(durl) - z), 2);
+			System.out.println("Sum: " + sum);
+			System.out.println("xProductSum: " + xProductSum);
+			System.out.println("yProductSum: " + yProductSum);
 		}
 	
 		return sum / (xProductSum * yProductSum);
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Map<String, Double> deserializePagerank(String string)
+	private static Map<String, Float> deserializePagerank(String string)
 			throws IOException {
-		Map<String, Double> pageranks = new HashMap<String, Double>();
+		Map<String, Float> pageranks = new HashMap<String, Float>();
 		try {
 			FileInputStream fileIn = new FileInputStream(string);
 			ObjectInputStream in = new ObjectInputStream(fileIn);
-			pageranks = (Map<String, Double>) in.readObject();
+			pageranks = (Map<String, Float>) in.readObject();
 
 			in.close();
 			fileIn.close();       
@@ -89,7 +100,6 @@ public class Spearman {
 		} catch(IOException i) {
 		         i.printStackTrace();
 		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return numviews;
