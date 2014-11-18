@@ -28,13 +28,10 @@ class ScoredDocument implements Comparable<ScoredDocument> {
   public int get_docId(){
 	  return _doc._docid;
   }
-<<<<<<< Updated upstream
   
   public Document get_doc(){	  
 	  return _doc;
   }
-=======
->>>>>>> Stashed changes
 
   /**
    * @CS2580: Student should implement {@code asHtmlResult} for final project.

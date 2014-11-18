@@ -27,7 +27,6 @@ public class DocumentIndexed extends Document {
   public HashMap<String, Integer> word_freq(){
 	  return _wordFreq;
   }
-<<<<<<< Updated upstream
 
 //  public void word_frequency_increase(String word){
 //	  if(!_wordFreq.containsKey(word)){
@@ -43,7 +42,6 @@ public class DocumentIndexed extends Document {
 //		  return 0;
 //	  } else return _wordFreq.get(word);
 //  }
-=======
   
   public void word_frequency_increase(String word){
 	  if(!_wordFreq.containsKey(word)){
@@ -59,7 +57,6 @@ public class DocumentIndexed extends Document {
 		  return 0;
 	  } else return _wordFreq.get(word);
   }
->>>>>>> Stashed changes
   
   
 }

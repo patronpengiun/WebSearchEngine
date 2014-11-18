@@ -1,38 +1,23 @@
 package edu.nyu.cs.cs2580;
 
-<<<<<<< Updated upstream
 import java.io.File;
-=======
->>>>>>> Stashed changes
 import java.util.*;
 import java.util.Map.Entry;
 
 //query form http://<HOST>:<PORT>/prf?query=<QUERY>&ranker=<RANKER-TYPE>&numdocs=<INTEGER>&numterms=<INTEGER>
 
 public class QueryRepresentation {
-<<<<<<< Updated upstream
 	public static Map<String, Integer> map;
 	
 	public static Map<String, Double> compute(Vector<ScoredDocument> scoredDocs, Query query, Indexer indexer, int _numTerms ){
 		map = new HashMap<String, Integer>();
 		int totalWords = 0;
-=======
-	public static Map<String, Integer> map = new HashMap<String, Integer>();
-	
-	public HashMap<String, Integer> compute(Vector<ScoredDocument> scoredDocs, Query query, Indexer indexer, int _numTerms ){
-		int totalWords = 0;
-		String cur_word = new String();
-		int cur_word_freq = 0;
->>>>>>> Stashed changes
 		try{
 			for (ScoredDocument doc : scoredDocs) {
 				int docid = doc.get_docId();
 				DocumentIndexed documentIndexed = (DocumentIndexed) (indexer
 						.getDoc(docid));
-<<<<<<< Updated upstream
 				System.out.println(documentIndexed.word_freq().size());
-=======
->>>>>>> Stashed changes
 				totalWords += documentIndexed.get_totalWords();
 			}
 			//calculate word frequency
@@ -40,7 +25,6 @@ public class QueryRepresentation {
 				int docid = doc.get_docId();
 				DocumentIndexed documentIndexed = (DocumentIndexed) (indexer
 						.getDoc(docid));
-<<<<<<< Updated upstream
 				Map<String, Integer> curWordFrequency = countFreq(doc) ;
 				for (String term : curWordFrequency.keySet()){
 					int frequency = curWordFrequency.get(term);
@@ -54,22 +38,6 @@ public class QueryRepresentation {
 			System.out.println(totalWords);
 			
 			return firstMTerm(totalWords,query,_numTerms);
-=======
-				HashMap<String, Integer> curWordFrequency = documentIndexed.word_freq() ;
-				Iterator iter = curWordFrequency.entrySet().iterator();
-				while(iter.hasNext()){
-					Map.Entry<String, Integer> entry = (Map.Entry<String, Integer>)iter.next();
-					cur_word = entry.getKey();
-					cur_word_freq = entry.getValue();
-					if(map.containsKey(cur_word)){
-						int tmp = map.get(cur_word);
-						cur_word_freq += tmp;
-					}
-					map.put(cur_word, cur_word_freq);
-				}
-			}
-			return;
->>>>>>> Stashed changes
 		} catch(Exception e){
 			
 		}
@@ -77,7 +45,6 @@ public class QueryRepresentation {
 		return null;
 	}
 	
-<<<<<<< Updated upstream
 	private static Map<String, Integer> countFreq(ScoredDocument doc){
 		Map<String, Integer> result = new HashMap<String, Integer>();
 		try{		
@@ -92,7 +59,7 @@ public class QueryRepresentation {
 					  } else {
 						  	if(map.containsKey(token)){
 						  		int tmp = result.get(token) + 1;
-						  		result.put(token, tmp); 
+						  		result.put(token, tmp);
 						  	}
 						  	else{
 						  		result.put(token, 1);
@@ -174,6 +141,4 @@ public class QueryRepresentation {
 		
 	}
 	
-=======
->>>>>>> Stashed changes
 }

@@ -196,10 +196,8 @@ class QueryHandler implements HttpHandler {
     else if (uriPath.equals("/prf")){
     	Vector<ScoredDocument> scoredDocs =
     			ranker.runQuery(processedQuery, cgiArgs._numResults);
-<<<<<<< Updated upstream
+
     	System.out.println(scoredDocs.size());
-=======
->>>>>>> Stashed changes
     	Map<String, Double> map = QueryRepresentation.compute(scoredDocs, processedQuery, _indexer, cgiArgs._numterms);
 		StringBuffer response = new StringBuffer();
 		
