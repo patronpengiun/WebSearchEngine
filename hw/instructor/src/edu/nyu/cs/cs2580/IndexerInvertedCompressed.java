@@ -155,7 +155,6 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  Scanner[] sr = new Scanner[2];
 		  sr[0] = new Scanner(doc.getTitle()).useDelimiter("\\s+");
 		  sr[1] = new Scanner(text).useDelimiter("\\s+");
-		  
 		  int offset = 0;
 		  for (Scanner scanner: sr) {
 			  while(scanner.hasNext()) {

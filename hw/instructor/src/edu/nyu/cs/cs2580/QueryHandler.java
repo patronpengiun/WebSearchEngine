@@ -2,6 +2,7 @@ package edu.nyu.cs.cs2580;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Map;
 import java.util.Vector;
 
 import com.sun.net.httpserver.Headers;
@@ -52,6 +53,8 @@ class QueryHandler implements HttpHandler {
       HTML,
     }
     public OutputFormat _outputFormat = OutputFormat.TEXT;
+	private int _numdocs = 10;
+	private int _numterms = 10;
 
     public CgiArguments(String uriQuery) {
       String[] params = uriQuery.split("&");
@@ -82,7 +85,20 @@ class QueryHandler implements HttpHandler {
           } catch (IllegalArgumentException e) {
             // Ignored, search engine should never fail upon invalid user input.
           }
-        }
+        } else if (key.equals("numdocs")){
+        	try{
+        		_numdocs = Integer.parseInt(val);
+        	}catch (NumberFormatException e) {
+                // Ignored, search engine should never fail upon invalid user input.
+            }
+        } else if (key.equals("numterms")){
+        	try{
+        		_numterms = Integer.parseInt(val);
+        	}catch (NumberFormatException e) {
+                // Ignored, search engine should never fail upon invalid user input.
+            }
+        }      
+        
       }  // End of iterating over params
     }
   }
@@ -135,8 +151,8 @@ class QueryHandler implements HttpHandler {
     if (uriPath == null || uriQuery == null) {
       respondWithMsg(exchange, "Something wrong with the URI!");
     }
-    if (!uriPath.equals("/search")) {
-      respondWithMsg(exchange, "Only /search is handled!");
+    if (!uriPath.equals("/search")  && !uriPath.equals("/prf")) {
+      respondWithMsg(exchange, "Only /search or /prf is handled!");
     }
     System.out.println("Query: " + uriQuery);
 
@@ -159,21 +175,41 @@ class QueryHandler implements HttpHandler {
     processedQuery.processQuery();
 
     // Ranking.
-    Vector<ScoredDocument> scoredDocs =
-        ranker.runQuery(processedQuery, cgiArgs._numResults);
-    StringBuffer response = new StringBuffer();
-    switch (cgiArgs._outputFormat) {
-    case TEXT:
-      constructTextOutput(scoredDocs, response);
-      break;
-    case HTML:
-      // @CS2580: Plug in your HTML output
-      break;
-    default:
-      // nothing
+    if(uriPath.equals("/search")){
+    	Vector<ScoredDocument> scoredDocs =
+    			ranker.runQuery(processedQuery, cgiArgs._numResults);
+    	StringBuffer response = new StringBuffer();
+    	switch (cgiArgs._outputFormat) {
+    	case TEXT:
+    		constructTextOutput(scoredDocs, response);
+    		break;
+    	case HTML:
+    		// @CS2580: Plug in your HTML output
+    		break;
+    	default:
+    		// nothing
+    	}
+    
+    	respondWithMsg(exchange, response.toString());
+    	System.out.println("Finished query: " + cgiArgs._query);
     }
-    respondWithMsg(exchange, response.toString());
-    System.out.println("Finished query: " + cgiArgs._query);
+    else if (uriPath.equals("/prf")){
+    	Vector<ScoredDocument> scoredDocs =
+    			ranker.runQuery(processedQuery, cgiArgs._numResults);
+    	System.out.println(scoredDocs.size());
+    	Map<String, Double> map = QueryRepresentation.compute(scoredDocs, processedQuery, _indexer, cgiArgs._numterms);
+		StringBuffer response = new StringBuffer();
+		
+		for(String s : map.keySet()) {
+			response.append(s + "\t" + map.get(s) + "\n");
+		}
+		respondWithMsg(exchange, response.toString());
+		System.out.println("Finished query: " + cgiArgs._query);
+    	
+    	
+    }
+    
+    
   }
 }
 

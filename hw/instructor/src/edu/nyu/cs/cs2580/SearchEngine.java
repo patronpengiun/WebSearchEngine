@@ -21,7 +21,7 @@ import com.sun.net.httpserver.HttpServer;
  *   java -cp src edu.nyu.cs.cs2580.SearchEngine \
  *     --mode=mining --options=conf/engine.conf
  *  2) Indexing
- *   java -cp src edu.nyu.cs.cs2580.SearchEngine \
+ *   java -cp src edu.nyu.cs.cs2580.SearchEngine \  
  *     --mode=index --options=conf/engine.conf
  *  3) Serving
  *   java -cp src -Xmx256m edu.nyu.cs.cs2580.SearchEngine \
@@ -229,3 +229,4 @@ public class SearchEngine {
     }
   }
 }
+//

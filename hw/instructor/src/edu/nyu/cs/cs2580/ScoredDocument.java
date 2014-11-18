@@ -24,6 +24,14 @@ class ScoredDocument implements Comparable<ScoredDocument> {
     buf.append(_doc.getNumViews());
     return buf.toString();
   }
+  
+  public int get_docId(){
+	  return _doc._docid;
+  }
+  
+  public Document get_doc(){	  
+	  return _doc;
+  }
 
   /**
    * @CS2580: Student should implement {@code asHtmlResult} for final project.
