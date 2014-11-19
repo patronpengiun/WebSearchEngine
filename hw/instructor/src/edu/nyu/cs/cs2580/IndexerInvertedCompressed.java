@@ -14,6 +14,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -72,6 +73,9 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  numViewsMap.clear();
 		  
 		  int num_pieces = 0;
+		  String auxOffset = _options._indexPrefix + "/auxOffset.idx";
+		  RandomAccessFile auxOffsetFile = new RandomAccessFile(auxOffset, "rw");
+		  long offset = 0l;
 		  
 		  try {
 	          String corpus = _options._corpusPrefix;
@@ -93,7 +97,9 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 	        	  System.out.println(listFiles.length + " / " + count);       	  
 	              
 	              if (file.isFile()) {
-	            	  processDocument(file, stemmer); 
+	            	  long size = processDocument(file, stemmer);
+	            	  offset += size;
+	            	  auxOffsetFile.writeLong(offset);
 	    		  }
 	    		  if (temp > numOfDoc / 40) {
 	    			  temp = 0;
@@ -104,6 +110,8 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 	      } catch (Exception e) {
 	          e.printStackTrace();
 	      }
+
+		  auxOffsetFile.close();
 		  
 		  num_pieces++;
 		  dump(num_pieces);
@@ -130,7 +138,8 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  freqFile.close();
 	  }
 
-	  private void processDocument(File file, Stemmer stemmer) {		  
+	  private long processDocument(File file, Stemmer stemmer) throws IOException{
+		  long ret = 0l;
 		  int doc_id = _documents.size();
 		  long total_words = 0;
 	      DocumentIndexed doc = new DocumentIndexed(doc_id);
@@ -138,11 +147,17 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 	      doc.setUrl(url);
 	      doc.setPageRank(scoreMap.get(url).pageRank);
 	      doc.setNumViews(scoreMap.get(url).numViews);
+	      
+	      // aux map for PRF 
+	      HashMap<String,Integer> auxMap = new HashMap<String,Integer>();
+	      String auxFile = _options._indexPrefix + "/aux.idx";
+	      BufferedOutputStream writer = new BufferedOutputStream(new FileOutputStream(auxFile,true));
+	      
 	         
 		  // the text of parsed document
 		  String text = "";	
 	      try {
-	    	  org.jsoup.nodes.Document document = Jsoup.parse(file, null);
+	    	  org.jsoup.nodes.Document document = Jsoup.parse(file, "UTF-8");
 	    	  doc.setTitle(document.title());
 			  text = document.body().text();
 			  document = null;		    	  
@@ -165,6 +180,12 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 				  if(token.equals("")) {
 					  continue;
 				  } else {
+					  if (auxMap.containsKey(token)) 
+						  auxMap.put(token, auxMap.get(token)+1);
+					  else
+						  auxMap.put(token, 1);
+					  
+					  
 					  _totalTermFrequency++;
 					  total_words++;
 					  int idx;				  
@@ -196,6 +217,22 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 		  }
 		  doc.set_totalWords(total_words);
 		  _documents.add(doc);
+		  
+		  // write to aux.idx
+		  try {
+			  for (Map.Entry<String, Integer> e: auxMap.entrySet()) {
+				  String temp = e.getKey() + "\t" + e.getValue() + "\t";
+				  byte[] b = temp.getBytes("UTF-8");
+				  ret += b.length;
+				  writer.write(b);
+			  }
+		  }
+		  catch (IOException e) {
+			  
+		  }
+		  auxMap.clear();
+		  writer.close();
+		  return ret;
 	  }
 	  
 	  private void dump(int n) throws IOException {
