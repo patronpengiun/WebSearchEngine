@@ -17,12 +17,27 @@ public class PrfCalculator {
 	private long _totalWordCount;
 	private HashMap<String,Integer> _uniqMap;
 	private int _numWords;
+	private final HashSet<String> stopWords;
+	private final Stemmer stemmer= new Stemmer();
 	
 	public PrfCalculator(Vector<ScoredDocument> docs, String corpusPrefix, Indexer indexer, int numWords) {
 		_docs = docs;
 		_corpusPrefix = corpusPrefix;
 		_indexer = indexer;
 		_numWords = numWords;
+		
+		String[] rawStopWords = new String[] {
+			"i", "a", "about", "an", "are", "as", "at", "be", "by",  
+			"for", "from", "how", "in", "is", "it", "of", "on", "or", 
+			"that", "the", "this", "to", "was", "what", "when", "where",
+			"who", "will", "with", "and"
+		};
+		for (int i=0;i<rawStopWords.length;i++) {
+			stemmer.add(rawStopWords[i].toCharArray(), rawStopWords[i].length());
+			stemmer.stem();
+			rawStopWords[i] = stemmer.toString();
+		}
+		stopWords = new HashSet<String>(Arrays.asList(rawStopWords));
 	}
 	
 	public List<ProbEntry> compute() {
@@ -37,6 +52,8 @@ public class PrfCalculator {
 		
 		PriorityQueue<FreqEntry> q = new PriorityQueue<FreqEntry>();
 		for (Map.Entry<String,Integer> e: _uniqMap.entrySet()) {
+			if (stopWords.contains(e.getKey()))
+				continue;
 			q.add(new FreqEntry(e.getKey(),e.getValue()));
 			if (q.size() > _numWords)
 				q.poll();
