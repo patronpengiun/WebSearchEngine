@@ -6,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 public class Spearman {
 	
@@ -14,15 +15,21 @@ public class Spearman {
 	 * 
 	 * Computes the Spearman correlation of given pagerank and numviews
 	 * 
-	 * Usage:java -cp Spearman index/pagerank.idx indes/numviews.idx
+	 * Usage:java -cp Spearman data/index/pagerank.idx data/index/numviews.idx
 	 * 
 	 * **/
 	public static void main(String[] args) {
 
 		try {
-			Map<String, Float> pageRankList = deserializePagerank(args[0]);
-			Map<String, Integer> numViewsList = deserializeNumviews(args[1]);
-			float score = getScore(pageRankList, numViewsList);
+			Map<String, Float> pagerankMap = deserializePagerank(args[0]);
+			Map<String, Integer> numviewMap = deserializeNumviews(args[1]);
+			Object[] sortedPr = sortPagerank(pagerankMap);
+			Object[] sortedNv = sortNumviews(numviewMap);
+			
+			Map<String, Integer> pageranks = mapToPagerank(pagerankMap, sortedPr);
+			Map<String, Integer> numviews = mapToNumviews(numviewMap, sortedNv);
+			
+			float score = getScore(pageranks, numviews);
 			System.out.println("Spearman Score: " + score);
 		} catch (NumberFormatException e) {
 			e.printStackTrace();
@@ -31,7 +38,7 @@ public class Spearman {
 		}
 	}
 
-	private static float getScore(Map<String, Float> pageranks,
+	private static float getScore(Map<String, Integer> pageranks,
 			Map<String, Integer> numviews) {
 
 		float z = 0;
@@ -50,8 +57,10 @@ public class Spearman {
 		
 		int numviewSize = numviews.keySet().size();
 		for (String durl : prset) {
-			Float xk = pageranks.get(durl);
+			Integer xk = pageranks.get(durl);
 			Integer yk = null;
+			System.out.println("pagerank of doc " + durl + " is " + xk);
+			System.out.println("numviews of doc " + durl + " is " + yk);
 			if (numviews.containsKey(durl))
 				yk = numviews.get(durl);
 			else
@@ -59,9 +68,9 @@ public class Spearman {
 			sum += ((xk - z) * (xk - z));
 			xProductSum += Math.pow((double)(pageranks.get(durl) - z), 2);
 			yProductSum += Math.pow((double)(numviews.get(durl) - z), 2);
-			System.out.println("Sum: " + sum);
-			System.out.println("xProductSum: " + xProductSum);
-			System.out.println("yProductSum: " + yProductSum);
+//			System.out.println("Sum: " + sum);
+//			System.out.println("xProductSum: " + xProductSum);
+//			System.out.println("yProductSum: " + yProductSum);
 		}
 	
 		return sum / (xProductSum * yProductSum);
@@ -81,7 +90,6 @@ public class Spearman {
 		} catch(IOException i) {
 		         i.printStackTrace();
 		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return pageranks;
@@ -104,4 +112,47 @@ public class Spearman {
 		}
 		return numviews;
 	}
+	
+	private static Object[] sortPagerank(Map<String, Float> pagerankMap) {
+		
+        PagerankComparator pc =  new PagerankComparator(pagerankMap);
+        TreeMap<String,Float> sorted_map = new TreeMap<String, Float>(pc);
+
+        sorted_map.putAll(pagerankMap);
+        
+        Object[] a = sorted_map.keySet().toArray();
+     
+        return a;
+	}
+	
+	private static Object[] sortNumviews(Map<String, Integer> numviewMap) {
+		
+        NumviewComparator nvc =  new NumviewComparator(numviewMap);
+        TreeMap<String,Integer> sorted_map = new TreeMap<String, Integer>(nvc);
+
+        sorted_map.putAll(numviewMap);
+        
+        Object[] a = sorted_map.keySet().toArray();
+        
+        return a;
+	}
+	
+	private static Map<String, Integer> mapToPagerank(Map<String, Float> pagerankMap, Object[] sortedPr) {
+		Map<String, Integer> result = new HashMap<String, Integer>();
+		for (int i = 0; i < sortedPr.length; i++) {
+			String key = (String) sortedPr[i];
+			result.put(key, Integer.valueOf(i + 1));
+		}		
+		return result;
+	}
+	
+	private static Map<String, Integer> mapToNumviews(Map<String, Integer> numviewMap, Object[] sortedNv) {
+		Map<String, Integer> result = new HashMap<String, Integer>();
+		for (int i = 0; i < sortedNv.length; i++) {
+			String key = (String) sortedNv[i];
+			result.put(key, Integer.valueOf(i + 1));
+		}
+		return result;
+	}
+
 }
