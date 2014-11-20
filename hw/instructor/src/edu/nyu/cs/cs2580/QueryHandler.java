@@ -2,6 +2,8 @@ package edu.nyu.cs.cs2580;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
@@ -195,19 +197,19 @@ class QueryHandler implements HttpHandler {
     }
     else if (uriPath.equals("/prf")){
     	Vector<ScoredDocument> scoredDocs =
-    			ranker.runQuery(processedQuery, cgiArgs._numResults);
+    			ranker.runQuery(processedQuery, cgiArgs._numdocs);
 
     	System.out.println(scoredDocs.size());
-    	Map<String, Double> map = QueryRepresentation.compute(scoredDocs, processedQuery, _indexer, cgiArgs._numterms);
+    	PrfCalculator calculator = new PrfCalculator(scoredDocs,
+    			_indexer._options._corpusPrefix, _indexer, cgiArgs._numterms);
+    	List<PrfCalculator.ProbEntry> list = calculator.compute();
 		StringBuffer response = new StringBuffer();
 		
-		for(String s : map.keySet()) {
-			response.append(s + "\t" + map.get(s) + "\n");
+		for(PrfCalculator.ProbEntry e: list) {
+			response.append(e.token + "\t" + e.prob + "\n");
 		}
 		respondWithMsg(exchange, response.toString());
 		System.out.println("Finished query: " + cgiArgs._query);
-    	
-    	
     }
     
     

@@ -266,7 +266,7 @@ public class IndexerInvertedDoconly extends Indexer implements Serializable{
       doc.setNumViews(scoreMap.get(url).numViews);
 	  
 	  try {
-		  org.jsoup.nodes.Document document = Jsoup.parse(new File(path), null);
+		  org.jsoup.nodes.Document document = Jsoup.parse(new File(path), "UTF-8");
 		  doc.setTitle(document.title());
 		  String text = document.body().text();
 		  document = null;
