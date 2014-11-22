@@ -49,7 +49,6 @@ public class Spearman {
 			zsum += pageranks.get(url);
 		}
 		z = zsum / pageranks.size();
-//		System.out.println("z: " + z);
 		
 		float sum = 0;
 		float xProductSum = 0;
@@ -59,8 +58,6 @@ public class Spearman {
 		for (String durl : prset) {
 			Integer xk = pageranks.get(durl);
 			Integer yk = null;
-			System.out.println("pagerank of doc " + durl + " is " + xk);
-			System.out.println("numviews of doc " + durl + " is " + yk);
 			if (numviews.containsKey(durl))
 				yk = numviews.get(durl);
 			else
@@ -68,9 +65,6 @@ public class Spearman {
 			sum += ((xk - z) * (xk - z));
 			xProductSum += Math.pow((double)(pageranks.get(durl) - z), 2);
 			yProductSum += Math.pow((double)(numviews.get(durl) - z), 2);
-//			System.out.println("Sum: " + sum);
-//			System.out.println("xProductSum: " + xProductSum);
-//			System.out.println("yProductSum: " + yProductSum);
 		}
 	
 		return sum / (xProductSum * yProductSum);

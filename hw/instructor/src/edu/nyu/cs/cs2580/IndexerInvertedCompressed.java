@@ -484,8 +484,10 @@ public class IndexerInvertedCompressed extends Indexer implements Serializable {
 	  public DocumentIndexed nextDoc(Query query, int doc_id) {
 		  while(true) {
 			  Integer candidate = nextDoc_withAllTokens(query._tokens,doc_id);
-			  if (candidate == null)
+			  if (candidate == null) {
+				  tmap.clear();
 				  return null;
+			  }
 			  boolean containAll = true;
 			  for (Vector<String> phrase: query._phrases) {
 				  if (!containsPhrase(phrase,candidate)) {

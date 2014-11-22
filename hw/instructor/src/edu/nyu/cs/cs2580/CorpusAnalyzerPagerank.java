@@ -91,7 +91,7 @@ public class CorpusAnalyzerPagerank extends CorpusAnalyzer {
   public void compute() throws IOException {
     System.out.println("Computing using " + this.getClass().getName());
     
-    int steps = 1;
+    int steps = 2;
     float lambda = 0.1f;
     
     // iterative computation
@@ -124,6 +124,8 @@ public class CorpusAnalyzerPagerank extends CorpusAnalyzer {
 			new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(pageRankFile)));
 	writer.writeObject(links);
 	writer.close();
+	File graphFile = new File(_options._indexPrefix + "/graphFile");
+	graphFile.delete();
   }
 
   /**

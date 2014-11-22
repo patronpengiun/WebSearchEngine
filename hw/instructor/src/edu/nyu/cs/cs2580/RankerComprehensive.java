@@ -26,17 +26,18 @@ public class RankerComprehensive extends Ranker {
 	  Queue<ScoredDocument> rankQueue = new PriorityQueue<ScoredDocument>();
 	  Document doc = null;
 	  int docid = -1;
-	  double alpha = 0.8;
+	  double alpha = 1;
 	  double beta = 0.1;
-	  double sigma = 0.01;
+	  double sigma = 0.1;
 	  while ((doc = _indexer.nextDoc(query, docid)) != null) {
 		  rankQueue.add(new ScoredDocument(doc, 
-				  	alpha*getQLScore(query,doc) + beta * doc.getPageRank() + sigma * doc.getNumViews()));
+				  	alpha*getQLScore(query,doc) + beta * doc.getPageRank() + sigma * Math.log(doc.getNumViews())));
 		  if (rankQueue.size() > numResults) {
 			  rankQueue.poll();
 		  }
 	      docid = doc._docid;
 	  }
+	  
 	  
 	  Vector<ScoredDocument> results = new Vector<ScoredDocument>();
 	  ScoredDocument scoredDoc = null;

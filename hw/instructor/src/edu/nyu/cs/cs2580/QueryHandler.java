@@ -205,8 +205,12 @@ class QueryHandler implements HttpHandler {
     	List<PrfCalculator.ProbEntry> list = calculator.compute();
 		StringBuffer response = new StringBuffer();
 		
+		double sum = 0.0;
 		for(PrfCalculator.ProbEntry e: list) {
-			response.append(e.token + "\t" + e.prob + "\n");
+			sum += e.prob;
+		}
+		for(PrfCalculator.ProbEntry e: list) {
+			response.append(e.token + "\t" + e.prob/sum + "\n");
 		}
 		respondWithMsg(exchange, response.toString());
 		System.out.println("Finished query: " + cgiArgs._query);
