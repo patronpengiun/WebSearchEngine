@@ -62,12 +62,12 @@ public class Spearman {
 				yk = numviews.get(durl);
 			else
 				yk = numviewSize++;
-			sum += ((xk - z) * (xk - z));
+			sum += ((xk - z) * (yk - z));
 			xProductSum += Math.pow((double)(pageranks.get(durl) - z), 2);
 			yProductSum += Math.pow((double)(numviews.get(durl) - z), 2);
 		}
 	
-		return sum / (xProductSum * yProductSum);
+		return sum / (float)Math.sqrt(xProductSum * yProductSum);
 	}
 
 	@SuppressWarnings("unchecked")

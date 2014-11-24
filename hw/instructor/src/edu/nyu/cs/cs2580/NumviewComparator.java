@@ -12,10 +12,15 @@ class NumviewComparator implements Comparator<String> {
 
     // Note: this comparator imposes orderings that are inconsistent with equals.    
     public int compare(String a, String b) {
-        if (base.get(a) >= base.get(b)) {
+        if (base.get(a) > base.get(b)) {
             return -1;
-        } else {
+        } else if (base.get(a) < base.get(b)) {
             return 1;
-        } // returning 0 would merge keys
+        } else {
+        	if (a.compareTo(b) < 0)
+        		return -1;
+        	else 
+        		return 1;
+        }// returning 0 would merge keys
     }
 }
