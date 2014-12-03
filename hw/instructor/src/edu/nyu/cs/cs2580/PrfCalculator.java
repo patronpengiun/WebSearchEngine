@@ -30,7 +30,7 @@ public class PrfCalculator {
 			"i", "a", "about", "an", "are", "as", "at", "be", "by",  
 			"for", "from", "how", "in", "is", "it", "of", "on", "or", 
 			"that", "the", "this", "to", "was", "what", "when", "where",
-			"who", "will", "with", "and"
+			"who", "will", "with", "and", "[edit]", "^"
 		};
 		for (int i=0;i<rawStopWords.length;i++) {
 			stemmer.add(rawStopWords[i].toCharArray(), rawStopWords[i].length());
