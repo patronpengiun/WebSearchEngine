@@ -7,6 +7,7 @@ import org.jsoup.Jsoup;
 
 public class FinalProject {
 	private TreeMap<String,Integer> dict;
+	private PrefixTree tree;
 	
 	public void buildDict() {
 		dict = new TreeMap<String,Integer>();
@@ -37,9 +38,11 @@ public class FinalProject {
 			dict = (TreeMap<String,Integer>)ret;
 			reader.close();
 		}
-		catch (Exception e) {}
+		catch (Exception e) {
+			System.err.println(e.getMessage());
+		}
 		
-		
+		/*
 		try {
 			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("mapResult"),"UTF-8"));
 			for (Map.Entry<String, Integer> e: dict.entrySet()) {
@@ -54,6 +57,46 @@ public class FinalProject {
 			writer.close();
 		}
 		catch (IOException e) {
+			System.err.println(e.getMessage());
+		}
+		*/
+	}
+	
+	public void buildTreeFromMap() {
+		loadDict();
+		
+		PrefixTree t = new PrefixTree();
+		for (Map.Entry<String, Integer> e: dict.entrySet()) {
+			t.add(e.getKey(), e.getValue());
+		}
+		
+		dict.clear();
+		tree = t;
+		System.gc();
+		
+		
+		/*
+		try {
+			ObjectOutputStream writer =
+					new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("tree")));
+			writer.writeObject(t);
+			writer.close();
+		}
+		catch (IOException e) {
+			System.err.println(e.getMessage());
+		}*/
+	}
+	
+	public void loadTree() {
+		try {
+			ObjectInputStream reader =
+					new ObjectInputStream(new BufferedInputStream(new FileInputStream("tree")));
+			Object ret = null;
+			ret = reader.readObject();
+			tree = (PrefixTree)ret;
+			reader.close();
+		}
+		catch (Exception e) {
 			System.err.println(e.getMessage());
 		}
 	}
@@ -101,9 +144,20 @@ public class FinalProject {
 		scc.close();
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException{
 		FinalProject p = new FinalProject();
 		//p.buildDict();
-		p.loadDict();
+		p.buildTreeFromMap();
+		//p.loadTree();
+		
+		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+		String line = null;
+		while ((line = reader.readLine()) != null) {
+			List<String> result = p.tree.searchPrefix(line, 5);
+			for (String s: result) {
+				System.out.println(s);
+			}
+		}
+		reader.close();
 	}
 }

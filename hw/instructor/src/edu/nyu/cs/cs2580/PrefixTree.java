@@ -1,8 +1,10 @@
 package edu.nyu.cs.cs2580;
 
+import java.io.Serializable;
 import java.util.*;
 
-public class PrefixTree {
+public class PrefixTree implements Serializable{
+	private static final long serialVersionUID = -8568926562981497095L;
 	private Node root;
 	
 	public PrefixTree() {
@@ -26,10 +28,41 @@ public class PrefixTree {
 	}
 	
 	public List<String> searchPrefix(String prefix, int limit) {
+		LinkedList<String> result = new LinkedList<String>();
+		PriorityQueue<WeightedString> q = new PriorityQueue<WeightedString>();
+		StringBuilder sb = new StringBuilder();
+		
+		Node worker = root;
+		for (int i=0;i<prefix.length();i++) {
+			worker = worker.children.get(prefix.charAt(i));
+			if (worker == null)
+				return result;
+		}
+		
+		sb.append(prefix);
+		searchHelper(limit,q,worker,sb);
+		while (!q.isEmpty()) {
+			result.addFirst(q.poll().str);
+		}
+		return result;
+	}
+	
+	private void searchHelper(int limit, PriorityQueue<WeightedString> q, Node node, StringBuilder sb) {
+		if (node.weight != null) {
+			q.add(new WeightedString(sb.toString(),node.weight));
+			if (q.size() > limit)
+				q.poll();
+		}
+		for (Node n: node.children.values()) {
+			sb.append(n.val);
+			searchHelper(limit,q,n,sb);
+			sb.setLength(sb.length() - 1);
+		}
 		
 	}
 	
-	class Node {
+	class Node implements Serializable{
+		private static final long serialVersionUID = -9142672891694305781L;
 		char val;
 		Integer weight;
 		Map<Character,Node> children;
@@ -38,6 +71,22 @@ public class PrefixTree {
 			this.val = val;
 			weight = null;
 			children = new HashMap<Character,Node>();
+		}
+	}
+	
+	class WeightedString implements Comparable<WeightedString>, Serializable {
+		private static final long serialVersionUID = 2183469023372990006L;
+		String str;
+		int weight;
+		
+		WeightedString(String str, int weight) {
+			this.str = str;
+			this.weight = weight;
+		}
+		
+		@Override
+		public int compareTo(WeightedString o) {
+			return this.weight - o.weight;
 		}
 	}
 }

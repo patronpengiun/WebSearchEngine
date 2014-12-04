@@ -117,7 +117,7 @@ class QueryHandler implements HttpHandler {
   private void respondWithMsg(HttpExchange exchange, final String message)
       throws IOException {
     Headers responseHeaders = exchange.getResponseHeaders();
-    responseHeaders.set("Content-Type", "text/plain; charset=utf8");
+    responseHeaders.set("Content-Type", "text/plain; charset=UTF-8");
     exchange.sendResponseHeaders(200, 0); // arbitrary number of bytes
     OutputStream responseBody = exchange.getResponseBody();
     responseBody.write(message.getBytes("UTF-8"));
