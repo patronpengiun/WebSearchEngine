@@ -198,11 +198,13 @@ public class SearchEngine {
     indexer.loadIndex();
     QueryHandler handler = new QueryHandler(SearchEngine.OPTIONS, indexer);
     LookupHandler lHandler = new LookupHandler();
+    SearchHandler sHandler = new SearchHandler();
     // Establish the serving environment
     InetSocketAddress addr = new InetSocketAddress(SearchEngine.PORT);
     HttpServer server = HttpServer.create(addr, -1);
     server.createContext("/", handler);
     server.createContext("/lookup", lHandler);
+    server.createContext("/search", sHandler);
     server.setExecutor(Executors.newCachedThreadPool());
     server.start();
     System.out.println(
