@@ -1,3 +1,6 @@
 *.class
 *.DS_Store
 .classpath
+hw/instructor/data/wiki
+./hw/instructor/data/index/aux.idx
+./hw/instructor/data/index/invertedCompressMerged.idx

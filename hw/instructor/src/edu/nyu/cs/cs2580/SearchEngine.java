@@ -204,7 +204,7 @@ public class SearchEngine {
     HttpServer server = HttpServer.create(addr, -1);
     server.createContext("/", handler);
     server.createContext("/lookup", lHandler);
-    server.createContext("/search", sHandler);
+    server.createContext("/adv-search", sHandler);
     server.setExecutor(Executors.newCachedThreadPool());
     server.start();
     System.out.println(
