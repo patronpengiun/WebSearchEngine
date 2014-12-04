@@ -16,7 +16,7 @@ public class SearchHandler implements HttpHandler{
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
 		String requestMethod = exchange.getRequestMethod();
-	    if (!requestMethod.equalsIgnoreCase("POST")) { // POST requests only.
+	    if (!requestMethod.equalsIgnoreCase("GET")) { // GET requests only.
 	      return;
 	    }
 	    
