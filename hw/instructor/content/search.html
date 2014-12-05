@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<link rel="stylesheet" type="text/css" href="searchEngine.css">
+	<link rel="stylesheet" type="text/css" href="content/searchEngine.css">
 	<title>Search Engine</title>
 	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 	<link rel="stylesheet" href="http://code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
@@ -17,20 +17,24 @@
 	    $( "#tags" ).autocomplete({
 	    	source: availableTags
 	    });
+	    $("#tags").keypress(function(event) {
+	    	if (!$("#tags").val()) {
+				$("#logo").hide();
+				$("#search-div").removeClass("center").addClass("header");
+	    	}
+		})
 	});
+	
+	
 	</script>
 </head>
 
 <body>
 <div class="center">
-	<img class="center" src="http://img.talkandroid.com/uploads/2013/03/wpid-photo-jan-14-2013-1115-am.jpg" alt="Google" height="300px" width="500px">
+	<img id="logo" class="center" src="http://img.talkandroid.com/uploads/2013/03/wpid-photo-jan-14-2013-1115-am.jpg" alt="Google" height="300px" width="500px">
 </div>
 <div id="search-div" class="center">
-	<label for="tags">Search Queries: </label>
 	<input id="tags" class="search-bar" >
-</div>
-<div class="center">
-	<input type="button" value="Search!" id="search">
 </div>
  
 </body>

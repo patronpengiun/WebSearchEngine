@@ -29,3 +29,17 @@ input.search-bar {
 	height:4em;
 	width:8em;
 }
+
+#search-div.header {
+	position: absolute;
+	left: 0;
+	top: 0;
+	text-align: left;
+	width: 100%;
+	background: #f1f1f1;
+}
+
+.header #tags {
+	width: 40em;
+	margin: 12px 20px;
+}
