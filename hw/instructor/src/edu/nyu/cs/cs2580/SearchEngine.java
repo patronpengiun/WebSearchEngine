@@ -180,6 +180,8 @@ public class SearchEngine {
     Check(miner != null,
         "Miner " + SearchEngine.OPTIONS._logMinerType + " not found!");
     miner.compute();
+    
+    new FinalProject().buildTree(SearchEngine.OPTIONS._corpusPrefix, SearchEngine.OPTIONS._indexPrefix);
     return;
   }
   
@@ -193,11 +195,13 @@ public class SearchEngine {
   private static void startServing() throws IOException, ClassNotFoundException {
     // Create the handler and its associated indexer.
     Indexer indexer = Indexer.Factory.getIndexerByOption(SearchEngine.OPTIONS);
+    FinalProject pj = new FinalProject();
+    pj.loadTree(SearchEngine.OPTIONS._indexPrefix);
     Check(indexer != null,
         "Indexer " + SearchEngine.OPTIONS._indexerType + " not found!");
     indexer.loadIndex();
     QueryHandler handler = new QueryHandler(SearchEngine.OPTIONS, indexer);
-    LookupHandler lHandler = new LookupHandler();
+    LookupHandler lHandler = new LookupHandler(pj);
     SearchHandler sHandler = new SearchHandler();
     ContentHandler cHandler = new ContentHandler();
     // Establish the serving environment

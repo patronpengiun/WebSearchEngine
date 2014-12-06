@@ -22,7 +22,23 @@
 				$("#logo").hide();
 				$("#search-div").removeClass("center").addClass("header");
 	    	}
-		})
+		});
+		$("#tags").keyup(function() {
+			var prefix = $("#tags").val();
+			$.ajax(
+				"/lookup",
+				{
+					type: "POST",
+					data: {pre: prefix},
+					
+				}
+			).done(function(data) {
+				$( "#tags" ).autocomplete({
+			    	source: data
+			    });
+			});
+		});
+		
 	});
 	
 	

@@ -9,9 +9,39 @@ public class FinalProject {
 	private TreeMap<String,Integer> dict;
 	private PrefixTree tree;
 	
-	public void buildDict() {
+	public void buildTree(String corpusPath, String indexPath) {
 		dict = new TreeMap<String,Integer>();
-		File corpusDir = new File("data/wiki");
+		File corpusDir = new File(corpusPath);
+		File[] docs = corpusDir.listFiles();
+		for (File doc: docs) {
+			if (CorpusAnalyzer.isValidDocument(doc)) {
+				buildFromDoc(doc);
+			}
+		}
+		
+		tree = new PrefixTree();
+		for (Map.Entry<String, Integer> e: dict.entrySet()) {
+			if (e.getValue() >= 10)
+				tree.add(e.getKey(), e.getValue());
+		}
+		
+		dict.clear();
+		
+		try {
+			ObjectOutputStream writer =
+					new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(indexPath + "/tree.idx")));
+			writer.writeObject(tree);
+			writer.close();
+		}
+		catch (IOException e) {
+			System.err.println(e.getMessage());
+		}
+	}
+	
+	/*
+	private void buildDict(String path, String indexPath) {
+		dict = new TreeMap<String,Integer>();
+		File corpusDir = new File(path);
 		File[] docs = corpusDir.listFiles();
 		for (File doc: docs) {
 			if (CorpusAnalyzer.isValidDocument(doc)) {
@@ -20,19 +50,20 @@ public class FinalProject {
 		}
 		try {
 			ObjectOutputStream writer =
-					new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("temp")));
+					new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(indexPath + "/tempDict.idx")));
 			writer.writeObject(dict);
 			writer.close();
 		}
 		catch (IOException e) {
 			System.err.println(e.getMessage());
 		}
-	}
+	}*/
 	
-	public void loadDict() {
+	/*
+	private void loadDict(String indexPath) {
 		try {
 			ObjectInputStream reader =
-					new ObjectInputStream(new BufferedInputStream(new FileInputStream("temp")));
+					new ObjectInputStream(new BufferedInputStream(new FileInputStream(indexPath + "/tempDict.idx")));
 			Object ret = null;
 			ret = reader.readObject();
 			dict = (TreeMap<String,Integer>)ret;
@@ -41,33 +72,16 @@ public class FinalProject {
 		catch (Exception e) {
 			System.err.println(e.getMessage());
 		}
-		
-		/*
-		try {
-			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("mapResult"),"UTF-8"));
-			for (Map.Entry<String, Integer> e: dict.entrySet()) {
-				if (e.getValue() < 100)
-					continue;
-				
-				writer.write(e.getKey());
-				writer.write("\t");
-				writer.write(Integer.toString(e.getValue()));
-				writer.newLine();
-			}
-			writer.close();
-		}
-		catch (IOException e) {
-			System.err.println(e.getMessage());
-		}
-		*/
-	}
+	}*/
 	
-	public void buildTreeFromMap() {
-		loadDict();
+	/*
+	public void buildTreeFromMap(String indexPath) {
+		loadDict(indexPath);
 		
 		PrefixTree t = new PrefixTree();
 		for (Map.Entry<String, Integer> e: dict.entrySet()) {
-			t.add(e.getKey(), e.getValue());
+			if (e.getValue() >= 10)
+				t.add(e.getKey(), e.getValue());
 		}
 		
 		dict.clear();
@@ -75,7 +89,7 @@ public class FinalProject {
 		System.gc();
 		
 		
-		/*
+		
 		try {
 			ObjectOutputStream writer =
 					new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("tree")));
@@ -84,13 +98,14 @@ public class FinalProject {
 		}
 		catch (IOException e) {
 			System.err.println(e.getMessage());
-		}*/
+		}
 	}
+	*/
 	
-	public void loadTree() {
+	public void loadTree(String indexPath) {
 		try {
 			ObjectInputStream reader =
-					new ObjectInputStream(new BufferedInputStream(new FileInputStream("tree")));
+					new ObjectInputStream(new BufferedInputStream(new FileInputStream(indexPath + "/tree.idx")));
 			Object ret = null;
 			ret = reader.readObject();
 			tree = (PrefixTree)ret;
@@ -144,11 +159,14 @@ public class FinalProject {
 		scc.close();
 	}
 	
+	public List<String> getLookup(String prefix) {
+		List<String> result = tree.searchPrefix(prefix, 5);
+		return result;
+	}
+	/*
 	public static void main(String[] args) throws IOException{
 		FinalProject p = new FinalProject();
-		//p.buildDict();
-		p.buildTreeFromMap();
-		//p.loadTree();
+		
 		
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		String line = null;
@@ -159,5 +177,8 @@ public class FinalProject {
 			}
 		}
 		reader.close();
+		
+		
 	}
+	*/
 }
