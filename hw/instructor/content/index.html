@@ -10,13 +10,12 @@
 	<script src="http://code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
 	<script>
 	$(function() {
-		var availableTags = ["ActionScript","AppleScript","Asp","BASIC","C","C++","Clojure",
-	      "COBOL","ColdFusion","Erlang","Fortran","Groovy","Haskell","Java","JavaScript",
-	      "Lisp","Perl","PHP","Python","Ruby","Scala","Scheme"
-	    ];
-	    $( "#tags" ).autocomplete({
-	    	source: availableTags
-	    });
+		$("#submit").click(function() {
+			var query = $("#tags").val();
+			var url = '/search?query=' + query + '&ranker=comprehensive&format=html';
+			window.location.assign(url);
+		});
+
 	    $("#tags").keypress(function(event) {
 	    	if (!$("#tags").val()) {
 				$("#logo").hide();
@@ -50,11 +49,11 @@
 	<img id="logo" class="center" src="http://img.talkandroid.com/uploads/2013/03/wpid-photo-jan-14-2013-1115-am.jpg" alt="Google" height="300px" width="500px">
 </div>
 <div id="search-div" class="center">
-	<form action="/search" method="POST">
+	<form action="/search" method="GET">
 	<input type="text" id="tags" class="search-bar" name="query">
-	<inpur type="hidden" name="ranker" value="comprehensive">
-	<input type="hidden" name="format" value="html">
-	<input type="submit" value="Search">
+	<input type="hidden" id="ranker" name="ranker" value="comprehensive">
+	<input type="hidden" id="format" name="format" value="html">
+	<input type="submit" id="submit" value="Search">
 	</form>
 </div>
  

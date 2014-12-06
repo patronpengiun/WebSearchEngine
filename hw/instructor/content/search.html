@@ -25,18 +25,18 @@
 			    });
 			});
 		});
-		
+		$("#submit").click(function() {
+			var query = $("#tags").val();
+			var url = '/search?query=' + query + '&ranker=comprehensive&format=html';
+			window.location.assign(url);
+		});
 	});		
 	</script>
 </head>
 
 <body>
 <div id="search-div" class="center">
-	<form action="/search?" method="POST">
 	<input type="text" id="tags" class="search-bar" name="query">
-	<input type="hidden" name="format" value="html">
-	<inpur type="hidden" name="ranker" value="comprehensive">
-	<input type="submit" value="Search">
-	</form>
+	<input type="submit" id="submit" value="Search">
 </div>
  
