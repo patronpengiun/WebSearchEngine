@@ -10,6 +10,19 @@
 	<script src="http://code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
 	<script>
 	$(function() {
+		var availableTags = ["ActionScript","AppleScript","Asp","BASIC","C","C++","Clojure",
+	      "COBOL","ColdFusion","Erlang","Fortran","Groovy","Haskell","Java","JavaScript",
+	      "Lisp","Perl","PHP","Python","Ruby","Scala","Scheme"
+	    ];
+	    $( "#tags" ).autocomplete({
+	    	source: availableTags
+	    });
+	    $("#tags").keypress(function(event) {
+	    	if (!$("#tags").val()) {
+				$("#logo").hide();
+				$("#search-div").removeClass("center").addClass("header");
+	    	}
+		});
 		$("#tags").keyup(function() {
 			var prefix = $("#tags").val();
 			$.ajax(
@@ -26,17 +39,24 @@
 			});
 		});
 		
-	});		
+	});
+	
+	
 	</script>
 </head>
 
 <body>
+<div class="center">
+	<img id="logo" class="center" src="http://img.talkandroid.com/uploads/2013/03/wpid-photo-jan-14-2013-1115-am.jpg" alt="Google" height="300px" width="500px">
+</div>
 <div id="search-div" class="center">
-	<form action="/search?" method="POST">
+	<form action="/search" method="POST">
 	<input type="text" id="tags" class="search-bar" name="query">
-	<input type="hidden" name="format" value="html">
 	<inpur type="hidden" name="ranker" value="comprehensive">
+	<input type="hidden" name="format" value="html">
 	<input type="submit" value="Search">
 	</form>
 </div>
  
+</body>
+</html>

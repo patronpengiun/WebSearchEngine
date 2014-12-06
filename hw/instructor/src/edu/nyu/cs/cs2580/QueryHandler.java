@@ -1,6 +1,11 @@
 package edu.nyu.cs.cs2580;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Vector;
@@ -22,6 +27,12 @@ import edu.nyu.cs.cs2580.SearchEngine.Options;
  */
 class QueryHandler implements HttpHandler {
 
+	/** html provide the html file displaying search results **/
+	private static File html = new File("content/search.html");
+	
+	/** html_ending is the ending html tags**/
+	private static String html_ending = "</body>\n</html>";
+	
   /**
    * CGI arguments provided by the user through the URL. This will determine
    * which Ranker to use and what output format to adopt. For simplicity, all
@@ -115,7 +126,10 @@ class QueryHandler implements HttpHandler {
   private void respondWithMsg(HttpExchange exchange, final String message)
       throws IOException {
     Headers responseHeaders = exchange.getResponseHeaders();
-    responseHeaders.set("Content-Type", "text/plain; charset=UTF-8");
+    String uriQuery = exchange.getRequestURI().getQuery();
+    CgiArguments cgiArgs = new CgiArguments(uriQuery);
+    String contentType = (cgiArgs._outputFormat == CgiArguments.OutputFormat.HTML) ? "text/html" : "text/plain";
+    responseHeaders.set("Content-Type", contentType + "; charset=UTF-8");
     exchange.sendResponseHeaders(200, 0); // arbitrary number of bytes
     OutputStream responseBody = exchange.getResponseBody();
     responseBody.write(message.getBytes("UTF-8"));
@@ -123,12 +137,50 @@ class QueryHandler implements HttpHandler {
   }
 
   private void constructTextOutput(
-      final Vector<ScoredDocument> docs, StringBuffer response) {
-    for (ScoredDocument doc : docs) {
-      response.append(response.length() > 0 ? "\n" : "");
-      response.append(doc.asTextResult());
-    }
-    response.append(response.length() > 0 ? "\n" : "");
+		  final Vector<ScoredDocument> docs, StringBuffer response) {
+	  for (ScoredDocument doc : docs) {
+		  response.append(response.length() > 0 ? "\n" : "");
+	      response.append(doc.asTextResult());
+	  }
+	  response.append(response.length() > 0 ? "\n" : "");
+  }
+  
+  private void constructHtmlOutput(
+		  final Vector<ScoredDocument> scoredDocs, StringBuffer response) {
+	  FileInputStream in = null;
+	  try {
+			in = new FileInputStream(html);
+	  } catch (FileNotFoundException e) {
+			e.printStackTrace();
+	  }
+	  BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+	    
+	  String line = null;
+	    
+	  StringBuilder builder = new StringBuilder();
+	  try {
+		  while ((line = reader.readLine()) != null) {
+			  builder.append(line);
+			  builder.append("\n");
+		  }
+	  } catch (IOException e) {
+		e.printStackTrace();
+	  }
+	  try {
+		  reader.close();
+	  } catch (IOException e) {
+		e.printStackTrace();
+	  }
+	  response.append(builder.toString() + "\n");
+	  
+	  for (ScoredDocument doc : scoredDocs) {
+		  String url = doc.get_doc().getUrl();
+		  String title = doc.get_doc().getTitle();
+		  response.append("<a href='http://en.wikipedia.org/wiki/" + url + "'>" + title + "</a></p>" + "\n");
+//	      response.append(doc.asTextResult());
+	  }
+	  response.append(response.length() > 0 ? "\n" : "");	  
+	  response.append(html_ending);	 
   }
 
   public void handle(HttpExchange exchange) throws IOException {
@@ -185,6 +237,7 @@ class QueryHandler implements HttpHandler {
     		break;
     	case HTML:
     		// @CS2580: Plug in your HTML output
+    		constructHtmlOutput(scoredDocs, response);
     		break;
     	default:
     		// nothing
@@ -216,5 +269,7 @@ class QueryHandler implements HttpHandler {
     
     
   }
+
+
 }
 

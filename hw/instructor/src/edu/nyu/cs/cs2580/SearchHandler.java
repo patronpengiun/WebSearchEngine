@@ -12,7 +12,7 @@ import com.sun.net.httpserver.HttpHandler;
 
 public class SearchHandler implements HttpHandler{
 
-	private static String html = "content/search.html";
+	private static String html = "content/index.html";
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
 		String requestMethod = exchange.getRequestMethod();

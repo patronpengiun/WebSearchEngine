@@ -15,12 +15,13 @@ input.search-bar {
 	width: 100%;
 	font-size: large;
 }
+
 .center {
     margin-left: auto;
     margin-right: auto;
     width: 40em;
-    background-color: white;
 }
+
 #search {
 	position: center;
 	margin-left: 20em;
