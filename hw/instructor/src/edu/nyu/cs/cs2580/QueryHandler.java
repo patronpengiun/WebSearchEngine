@@ -176,7 +176,7 @@ class QueryHandler implements HttpHandler {
 	  for (ScoredDocument doc : scoredDocs) {
 		  String url = doc.get_doc().getUrl();
 		  String title = doc.get_doc().getTitle();
-		  response.append("<a href='http://en.wikipedia.org/wiki/" + url + "'>" + title + "</a></p>" + "\n");
+		  response.append("<a href='http://en.wikipedia.org/wiki/" + url + "' target='_blank'>" + title + "</a></p>" + "\n");
 //	      response.append(doc.asTextResult());
 	  }
 	  response.append(response.length() > 0 ? "\n" : "");	  
