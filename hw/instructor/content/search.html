@@ -17,6 +17,7 @@
 	 *
 	 * http://github.com/scottgonzalez/jquery-ui-extensions
 	 */
+
 	(function( $ ) {
 
 	var proto = $.ui.autocomplete.prototype,
@@ -55,6 +56,13 @@
 	    	source: [],
 	    	html: true
 	    });
+
+		$("#tags").keydown(function(event) {
+             if (event.keyCode == "13") {
+                 $("#submit").click();
+             }
+         });
+
 		$("#tags").keyup(function() {
 			var prefix = $("#tags").val();
 			$.ajax(
@@ -86,8 +94,5 @@
 </head>
 
 <body>
-<div id="search-div" class="center">
-	<input type="text" id="tags" class="search-bar" name="query"></input>
-	<input type="button" id="submit" value="Search"></input>
-</div>
- 
+<div id="search-div" class="header">
+	

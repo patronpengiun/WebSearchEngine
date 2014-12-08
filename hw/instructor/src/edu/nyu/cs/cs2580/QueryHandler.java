@@ -30,6 +30,7 @@ class QueryHandler implements HttpHandler {
 
 	/** html provide the html file displaying search results **/
 	private static File html = new File("content/search.html");
+	private static File notfound = new File("content/notfound.html");
 	
 	/** html_ending is the ending html tags**/
 	private static String html_ending = "</body>\n</html>";
@@ -149,10 +150,19 @@ class QueryHandler implements HttpHandler {
   }
   
   private void constructHtmlOutput(
-		  final Vector<ScoredDocument> scoredDocs, StringBuffer response, boolean flag, String corrected) {
+		  final Vector<ScoredDocument> scoredDocs, StringBuffer response, 
+		  boolean flag, String corrected, String cgi_query) {
 	  FileInputStream in = null;
+	  File serving = null;
+	  if (scoredDocs.size() > 0) {
+		  serving = html;
+		  
+	  } else {
+		  serving = notfound;
+	  }
+	  
 	  try {
-			in = new FileInputStream(html);
+			in = new FileInputStream(serving);
 	  } catch (FileNotFoundException e) {
 			e.printStackTrace();
 	  }
@@ -175,15 +185,21 @@ class QueryHandler implements HttpHandler {
 		e.printStackTrace();
 	  }
 	  response.append(builder.toString() + "\n");
+	  	  
+	  response.append("<input type='text' id='tags' class='search-bar' name='query' value='" + cgi_query + "'></input>");
+	  response.append("<input type='button' id='submit' value='Search'></input>");
+	  
 	  if (flag)
 		  response.append(HtmlUtil.generateSpellCorrection(corrected));
 	  
-	  
+	  response.append("</div>");
 	  for (ScoredDocument doc : scoredDocs) {
 		  String url = doc.get_doc().getUrl();
 		  String title = doc.get_doc().getTitle();
 		  response.append("<a href='http://en.wikipedia.org/wiki/" + url + "' target='_blank'>" + title + "</a></p>" + "\n");
-//	      response.append(doc.asTextResult());
+	  }
+	  if (scoredDocs.size() == 0) {
+		  response.append("<p>Query <span><b>'" + cgi_query + "'</b></span> does not have matched result.</p>");
 	  }
 	  response.append(response.length() > 0 ? "\n" : "");	  
 	  response.append(html_ending);	 
@@ -251,7 +267,7 @@ class QueryHandler implements HttpHandler {
     		break;
     	case HTML:
     		// @CS2580: Plug in your HTML output
-    		constructHtmlOutput(scoredDocs, response, flag[0], corrected);
+    		constructHtmlOutput(scoredDocs, response, flag[0], corrected, cgiArgs._query);
     		break;
     	default:
     		// nothing
