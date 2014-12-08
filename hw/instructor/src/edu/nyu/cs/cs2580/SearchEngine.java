@@ -200,7 +200,7 @@ public class SearchEngine {
     Check(indexer != null,
         "Indexer " + SearchEngine.OPTIONS._indexerType + " not found!");
     indexer.loadIndex();
-    QueryHandler handler = new QueryHandler(SearchEngine.OPTIONS, indexer);
+    QueryHandler handler = new QueryHandler(SearchEngine.OPTIONS, indexer, pj);
     LookupHandler lHandler = new LookupHandler(pj);
     SearchHandler sHandler = new SearchHandler();
     ContentHandler cHandler = new ContentHandler();

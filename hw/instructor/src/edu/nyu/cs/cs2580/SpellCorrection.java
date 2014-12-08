@@ -6,17 +6,48 @@ import java.util.regex.*;
 import java.io.*;
 import java.math.*;
 
-/*public class SpellCorrection {
-	public static void main(String[] args) throws IOException {
-		SpellCorrector spell = new SpellCorrector();
-		ArrayList<String> see = spell.correct("akk");
-		System.out.println(see.toString());
-	}
-}*/
-
-
-
 public class SpellCorrection{
+	public static void main(String[] args) throws IOException {
+		SpellCorrection spell = new SpellCorrection();
+		String word = "azvertis";
+		long startTime = System.nanoTime();
+		String see = spell.correct(word);
+		long endTime = System.nanoTime();
+		System.out.println(see);
+		System.out.println("took "+(endTime - startTime)*1.0/1000000000L + " s"); 
+		
+		//----------------------
+		
+		String result = "none";
+		int minDistance = Integer.MAX_VALUE;
+		int maxWeight = Integer.MIN_VALUE;
+		startTime = System.nanoTime();
+		DamerauLevensteinMetric m = new DamerauLevensteinMetric(); 
+		for (String str: spell.dict.keySet()) {
+			int distance = m.getDistance(word, str);
+			if (distance < minDistance) {
+				minDistance = distance;
+				result = str;
+			} else if (distance == minDistance && spell.dict.get(str) > maxWeight) {
+				maxWeight = spell.dict.get(str);
+				result = str;
+			}
+		}
+		endTime = System.nanoTime();
+		System.out.println(result);
+		System.out.println("took "+(endTime - startTime)*1.0/1000000000L + " s"); 
+		
+		// ---------------------
+		
+		NGramCorrector cc = new NGramCorrector(3);
+		cc.construct(spell.dict.keySet());
+		startTime = System.nanoTime();
+		result = cc.correct(word, spell.dict);
+		endTime = System.nanoTime();
+		System.out.println(result);
+		System.out.println("took "+(endTime - startTime)*1.0/1000000000L + " s");
+	}
+	
 	private HashMap<String, Integer> dict = new HashMap<String, Integer>();
 
 	 
@@ -57,51 +88,38 @@ public class SpellCorrection{
 		return result;
 	}
 	
-	public ArrayList<String> correct(String word){
-		ArrayList<String> result = new ArrayList<String>();
-		if (dict.containsKey(word)) {
-			result.add(word);
-			return result;
-		}
-		ArrayList<String> list = edits(word);
-		HashMap<Integer, ArrayList<String>> candidates = new HashMap<Integer, ArrayList<String>>();
-		for(String s : list) {
-			if(dict.containsKey(s)) {
-				ArrayList<String> temp = new ArrayList<String>();
-				if (candidates.get(dict.get(s)) != null){
-					temp  = candidates.get(dict.get(s));
-				}			
-				temp.add(s);
-				candidates.put(dict.get(s),temp);
-			}
-		}
-		
-		//if we cannot find words with edit distance of 1		
-		
-		if(candidates.isEmpty()){
-			ArrayList<String> biglist = new ArrayList<String>();
-			for(String s : list) {
-				ArrayList<String> temp = edits(s);
-				for (String str : temp){
-					if (!biglist.contains(str))
-						biglist.add(str);
-				}
-			}
-			list = biglist;
+	public String correct(String word){
+		if(dict.containsKey(word)) 
+		      return word;
 
-			for(String s : biglist) {
-				if(dict.containsKey(s)) {
-					ArrayList<String> temp = new ArrayList<String>();
-					if (candidates.get(dict.get(s)) != null){
-						temp  = candidates.get(dict.get(s));
-					}			
-					temp.add(s);
-					candidates.put(dict.get(s),temp);
-				}
-			}
-		}	
-		result = candidates.get(Collections.max(candidates.keySet()));
-		return result;
+		    ArrayList<String> list = edits(word);  // Everything edit distance 1 from word
+		    HashMap<Integer, String> candidates = new HashMap<Integer, String>();
+
+		    // Find all things edit distance 1 that are in the dictionary.  Also remember
+		    //   their frequency count from nWords.  
+		    // (Note if equal frequencies the last one will be the one remembered.)
+		    for(String s : list) 
+		      if(dict.containsKey(s)) 
+		        candidates.put(dict.get(s),s);
+
+		    // If found something edit distance 1 return the most frequent word
+		    if(candidates.size() > 0)   
+		      return candidates.get(Collections.max(candidates.keySet()));
+
+		    // Find all things edit distance 1 from everything of edit distance 1.  These
+		    // will be all things of edit distance 2 (plus original word).  Remember frequencies
+		    for(String s : list) 
+		      for(String w : edits(s)) 
+		        if(dict.containsKey(w)) 
+		          candidates.put(dict.get(w),w);
+		    
+		    if(candidates.size() > 0)   
+			      return candidates.get(Collections.max(candidates.keySet()));
+		    
+		    // If found something edit distance 2 return the most frequent word.
+		    // If not return the word with a "?" prepended.  (Original just returned the word.)
+		    return candidates.size() > 0 ? 
+		        candidates.get(Collections.max(candidates.keySet())) : "?" + word;
 	}
 	
 }

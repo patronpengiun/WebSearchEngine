@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Vector;
+import java.net.URLDecoder;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -118,9 +119,11 @@ class QueryHandler implements HttpHandler {
   // we are not worried about thread-safety here, the Indexer class must take
   // care of thread-safety.
   private Indexer _indexer;
+  private FinalProject _pj;
 
-  public QueryHandler(Options options, Indexer indexer) {
+  public QueryHandler(Options options, Indexer indexer, FinalProject pj) {
     _indexer = indexer;
+    _pj = pj;
   }
 
   private void respondWithMsg(HttpExchange exchange, final String message)
@@ -146,7 +149,7 @@ class QueryHandler implements HttpHandler {
   }
   
   private void constructHtmlOutput(
-		  final Vector<ScoredDocument> scoredDocs, StringBuffer response) {
+		  final Vector<ScoredDocument> scoredDocs, StringBuffer response, boolean flag, String corrected) {
 	  FileInputStream in = null;
 	  try {
 			in = new FileInputStream(html);
@@ -172,6 +175,9 @@ class QueryHandler implements HttpHandler {
 		e.printStackTrace();
 	  }
 	  response.append(builder.toString() + "\n");
+	  if (flag)
+		  response.append(HtmlUtil.generateSpellCorrection(corrected));
+	  
 	  
 	  for (ScoredDocument doc : scoredDocs) {
 		  String url = doc.get_doc().getUrl();
@@ -230,6 +236,13 @@ class QueryHandler implements HttpHandler {
     if(uriPath.equals("/search")){
     	Vector<ScoredDocument> scoredDocs =
     			ranker.runQuery(processedQuery, cgiArgs._numResults);
+    	
+    	String original = URLDecoder.decode(cgiArgs._query).toLowerCase();
+    	boolean[] flag = new boolean[1];
+    	String corrected = correct(original,flag);
+    	if (flag[0])
+    		System.out.println("correct query from " + cgiArgs._query + " to " + corrected);
+    			
     	StringBuffer response = new StringBuffer();
     	switch (cgiArgs._outputFormat) {
     	case TEXT:
@@ -237,7 +250,7 @@ class QueryHandler implements HttpHandler {
     		break;
     	case HTML:
     		// @CS2580: Plug in your HTML output
-    		constructHtmlOutput(scoredDocs, response);
+    		constructHtmlOutput(scoredDocs, response, flag[0], corrected);
     		break;
     	default:
     		// nothing
@@ -271,5 +284,28 @@ class QueryHandler implements HttpHandler {
   }
 
 
+  private String correct(String original, boolean[] flag) {
+	  boolean f = false;
+	  String[] temp = original.split("\\s");
+	  
+	  if (temp.length == 0) {
+		  flag[0] = false;
+		  return "";
+	  }
+	  
+	  String result = "";
+	  for (int i=0;i<temp.length;i++) {
+		  if (!NGramCorrector.isValid(temp[i])) {
+			  result += temp[i] + " ";
+		  } else {
+			  String corrected = _pj.correct(temp[i]);
+			  if (!corrected.equals(temp[i]))
+				  f = true;
+			  result += corrected + " ";
+		  }
+	  }
+	  flag[0] = f;
+	  return result.substring(0,result.length()-1);
+  }
 }
 

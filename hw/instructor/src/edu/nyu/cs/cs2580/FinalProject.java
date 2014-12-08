@@ -2,12 +2,17 @@ package edu.nyu.cs.cs2580;
 
 import java.io.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.jsoup.Jsoup;
 
 public class FinalProject {
 	private TreeMap<String,Integer> dict;
+	private HashMap<String,Integer> freqDict;
 	private PrefixTree tree;
+	private DamerauLevensteinMetric dl = new DamerauLevensteinMetric();
+	private NGramCorrector nc;
 	
 	public void buildTree(String corpusPath, String indexPath) {
 		dict = new TreeMap<String,Integer>();
@@ -18,6 +23,49 @@ public class FinalProject {
 				buildFromDoc(doc);
 			}
 		}
+		
+		freqDict = new HashMap<String,Integer>();
+		try {
+			BufferedReader reader = new BufferedReader(new FileReader("englishwords.txt"));
+			Pattern p = Pattern.compile("\\w+");
+			for(String temp = ""; temp != null; temp = reader.readLine()){
+				Matcher m = p.matcher(temp.toLowerCase());
+				while(m.find()) 
+					freqDict.put((temp = m.group()),1);
+			}
+			reader.close();
+		}
+		catch (IOException e) {
+			System.err.println(e.getMessage());
+		}
+		
+		for (Map.Entry<String, Integer> e: dict.entrySet()) {
+			if (freqDict.containsKey(e.getKey())) {
+				freqDict.put(e.getKey(), e.getValue());
+			} else if (e.getValue() > 100 && NGramCorrector.isValid(e.getKey())) {
+				freqDict.put(e.getKey(), e.getValue());
+			}
+		}
+		
+		System.out.println("freqDict size: " + freqDict.size());
+		
+		// store freqDict
+		try {
+			ObjectOutputStream writer =
+					new ObjectOutputStream(new BufferedOutputStream(
+							new FileOutputStream(indexPath + "/freqDict.idx")));
+			writer.writeObject(freqDict);
+			writer.close();
+		}
+		catch (IOException e) {
+			System.err.println(e.getMessage());
+		}
+		
+		// build and store nGrams
+		NGramCorrector nc = new NGramCorrector(3);
+		nc.construct(freqDict.keySet());
+		
+		freqDict.clear();
 		
 		tree = new PrefixTree();
 		for (Map.Entry<String, Integer> e: dict.entrySet()) {
@@ -37,6 +85,8 @@ public class FinalProject {
 			System.err.println(e.getMessage());
 		}
 	}
+	
+	
 	
 	/*
 	private void buildDict(String path, String indexPath) {
@@ -103,6 +153,20 @@ public class FinalProject {
 	*/
 	
 	public void loadTree(String indexPath) {
+		// load freqDict
+		try {
+			ObjectInputStream reader =
+					new ObjectInputStream(new BufferedInputStream(new FileInputStream(indexPath + "/freqDict.idx")));
+			Object ret = null;
+			ret = reader.readObject();
+			freqDict = (HashMap<String,Integer>)ret;
+			reader.close();
+		}
+		catch (Exception e) {
+			System.err.println(e.getMessage());
+		}
+		
+		// load prefix tree
 		try {
 			ObjectInputStream reader =
 					new ObjectInputStream(new BufferedInputStream(new FileInputStream(indexPath + "/tree.idx")));
@@ -114,6 +178,34 @@ public class FinalProject {
 		catch (Exception e) {
 			System.err.println(e.getMessage());
 		}
+		
+		// load ngram mapping
+		nc = new NGramCorrector(3);
+		nc.load();
+	}
+	
+	public String correct(String word) {
+		if (freqDict.containsKey(word))
+			return word;
+		
+		if (word.length() <= 5) {
+			String result = word;
+			int minDistance = Integer.MAX_VALUE;
+			int maxWeight = Integer.MIN_VALUE;
+			for (String str: freqDict.keySet()) {
+				int distance = dl.getDistance(word, str);
+				if (distance < minDistance) {
+					minDistance = distance;
+					result = str;
+				} else if (distance == minDistance && freqDict.get(str) > maxWeight) {
+					maxWeight = freqDict.get(str);
+					result = str;
+				}
+			}
+			return result;
+		}
+		
+		return nc.correct(word, freqDict);
 	}
 	
 	private void buildFromDoc(File doc) {
