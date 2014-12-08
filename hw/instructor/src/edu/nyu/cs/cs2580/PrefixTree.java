@@ -27,6 +27,25 @@ public class PrefixTree implements Serializable{
 		addHelper(word,weight,index+1,node.children.get(word.charAt(index)));
 	}
 	
+	public void update(String word) {
+		updateHelper(word,0,root);
+	}
+	
+	private void updateHelper(String word, int index, Node node) {
+		if (index == word.length()) {
+			if (node.weight == null)
+				node.weight = 10;
+			else
+				node.weight += 10;
+			return;
+		}
+		
+		if (!node.children.containsKey(word.charAt(index))) {
+			node.children.put(word.charAt(index),new Node(word.charAt(index)));
+		}
+		updateHelper(word,index+1,node.children.get(word.charAt(index)));
+	}
+	
 	public List<String> searchPrefix(String prefix, int limit) {
 		LinkedList<String> result = new LinkedList<String>();
 		PriorityQueue<WeightedString> q = new PriorityQueue<WeightedString>();

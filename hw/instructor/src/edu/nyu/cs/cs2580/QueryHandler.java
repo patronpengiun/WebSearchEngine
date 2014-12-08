@@ -238,6 +238,7 @@ class QueryHandler implements HttpHandler {
     			ranker.runQuery(processedQuery, cgiArgs._numResults);
     	
     	String original = URLDecoder.decode(cgiArgs._query).toLowerCase();
+    	_pj.recordQuery(original);
     	boolean[] flag = new boolean[1];
     	String corrected = correct(original,flag);
     	if (flag[0])

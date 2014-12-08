@@ -16,6 +16,16 @@ public class LookupHandler implements HttpHandler{
 		this.pj = pj;
 	}
 	
+	class Response {
+		int prev_count;
+		String[] result;
+		
+		public Response(int i, String[] strs) {
+			prev_count = i;
+			result = strs;
+		}
+	}
+	
 	@Override
 	public void handle(HttpExchange exchange) throws IOException {
 		String requestMethod = exchange.getRequestMethod();
@@ -37,15 +47,21 @@ public class LookupHandler implements HttpHandler{
 	    else
 	    	prefix = "";
 	    
-	    List<String> ret = pj.getLookup(prefix);
+	    List<String> ret = pj.getHistory(prefix);
+	    int prev_count = ret.size();
+	    for (String str: pj.getLookup(prefix)) {
+	    	if (!ret.contains(str))
+	    		ret.add(str);
+	    }
 	    String[] result = new String[ret.size()];
 	    Object[] objects = ret.toArray();
 	    for (int i=0;i<objects.length;i++) {
 	    	result[i] = (String)objects[i];
 	    }
+	    Response r = new Response(prev_count,result);
 	    
 	    Gson gson = new Gson();
-	    String jsonStr = gson.toJson(result);
+	    String jsonStr = gson.toJson(r);
 	    
 	    Headers responseHeaders = exchange.getResponseHeaders();
 	    responseHeaders.set("Content-Type", "application/json; charset=UTF-8");

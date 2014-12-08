@@ -11,8 +11,11 @@ public class FinalProject {
 	private TreeMap<String,Integer> dict;
 	private HashMap<String,Integer> freqDict;
 	private PrefixTree tree;
+	private PrefixTree history;
 	private DamerauLevensteinMetric dl = new DamerauLevensteinMetric();
 	private NGramCorrector nc;
+	
+	private HashMap<String,Integer> biMap;
 	
 	public void buildTree(String corpusPath, String indexPath) {
 		dict = new TreeMap<String,Integer>();
@@ -75,6 +78,22 @@ public class FinalProject {
 		
 		dict.clear();
 		
+		HashMap<String,Integer> biMap = null;
+		try {
+			ObjectInputStream reader =
+					new ObjectInputStream(new BufferedInputStream(new FileInputStream("data/index/bigramMap.idx")));
+			Object ret = null;
+			ret = reader.readObject();
+			biMap = (HashMap<String,Integer>)ret;
+			reader.close();
+		}
+		catch (Exception e) {
+			System.err.println(e.getMessage());
+		}
+		for (Map.Entry<String,Integer> e : biMap.entrySet()) {
+			tree.add(e.getKey(), e.getValue());
+		}
+		
 		try {
 			ObjectOutputStream writer =
 					new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(indexPath + "/tree.idx")));
@@ -84,6 +103,8 @@ public class FinalProject {
 		catch (IOException e) {
 			System.err.println(e.getMessage());
 		}
+		
+		tree = null;
 	}
 	
 	
@@ -182,6 +203,14 @@ public class FinalProject {
 		// load ngram mapping
 		nc = new NGramCorrector(3);
 		nc.load();
+		
+		//initialize prefix tree for query history
+		history = new PrefixTree();
+	}
+	
+	public void recordQuery(String query) {
+		history.add(query, (int)(System.currentTimeMillis() / 1000));
+		tree.update(query);
 	}
 	
 	public String correct(String word) {
@@ -253,6 +282,11 @@ public class FinalProject {
 	
 	public List<String> getLookup(String prefix) {
 		List<String> result = tree.searchPrefix(prefix, 5);
+		return result;
+	}
+	
+	public List<String> getHistory(String prefix) {
+		List<String> result = history.searchPrefix(prefix, 2);
 		return result;
 	}
 	/*
