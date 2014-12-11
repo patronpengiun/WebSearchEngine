@@ -44,3 +44,13 @@ input.search-bar {
 	width: 40em;
 	margin: 12px 20px;
 }
+div.correction {
+	color: red;
+}
+hr {
+	color:#e5e5e5;
+}
+
+.gb_Ta {
+	background-repeat: no-repeat;
+}

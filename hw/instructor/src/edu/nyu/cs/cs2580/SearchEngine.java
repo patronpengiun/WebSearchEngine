@@ -207,7 +207,8 @@ public class SearchEngine {
     // Establish the serving environment
     InetSocketAddress addr = new InetSocketAddress(SearchEngine.PORT);
     HttpServer server = HttpServer.create(addr, -1);
-    server.createContext("/", handler);
+    server.createContext("/", sHandler);
+    server.createContext("/search", handler);
     server.createContext("/lookup", lHandler);
     server.createContext("/index", sHandler);
     server.createContext("/content", cHandler);
