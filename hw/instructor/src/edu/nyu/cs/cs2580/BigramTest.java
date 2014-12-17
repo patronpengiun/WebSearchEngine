@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.*;
 
 import org.jsoup.Jsoup;
 
@@ -42,6 +43,9 @@ public class BigramTest {
 			}
 			System.out.print(++ptr);
 			System.out.println(" / " + docs.length);
+			
+			if (ptr == 4000)
+				break;
 		}
 		
 		HashMap<String,Integer> map = new HashMap<String,Integer>();
@@ -78,8 +82,29 @@ public class BigramTest {
 		
 		Scanner sc = new Scanner(title).useDelimiter("\\s");
 		String prev = null;
+		LinkedList<String> trigram = new LinkedList<String>();
 		while (sc.hasNext()) {
 			String token = sc.next().toLowerCase();
+			
+			if (token.length() == 0)
+				continue;
+			
+			// trigram
+			if (trigram.size() < 3) {
+				trigram.addLast(token);
+			} else {
+				String temp = "";
+				for (String str: trigram) {
+					temp = temp + str + " ";
+				}
+				temp = temp.substring(0,temp.length()-1);
+				if (biMap.containsKey(temp))
+					biMap.put(temp, biMap.get(temp)+10);
+				else 
+					biMap.put(temp, 10);
+				trigram.removeFirst();
+				trigram.addLast(token);
+			}
 			
 			char last = token.charAt(token.length()-1);
 			if (last == '.' || last == '"' || last == ',' || last == ':' || last == ';')
@@ -104,12 +129,30 @@ public class BigramTest {
 		sc.close();
 		
 		prev = null;
+		trigram = new LinkedList<String>();
 		Scanner scc = new Scanner(text).useDelimiter("\\s");
 		while (scc.hasNext()) {
 			String token = scc.next().toLowerCase();
 			
 			if (token.length() == 0)
 				continue;
+			
+			// trigram
+			if (trigram.size() < 3) {
+				trigram.addLast(token);
+			} else {
+				String temp = "";
+				for (String str: trigram) {
+					temp = temp + str + " ";
+				}
+				temp = temp.substring(0,temp.length()-1);
+				if (biMap.containsKey(temp))
+					biMap.put(temp, biMap.get(temp)+1);
+				else 
+					biMap.put(temp, 1);
+				trigram.removeFirst();
+				trigram.addLast(token);
+			}
 			
 			char last = token.charAt(token.length()-1);
 			if (last == '.' || last == '"' || last == ',' || last == ':' || last == ';')

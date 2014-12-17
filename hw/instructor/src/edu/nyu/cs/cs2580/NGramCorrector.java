@@ -28,6 +28,8 @@ public class NGramCorrector {
 				continue;
 			for (Object o: list) {
 				String str = (String)o;
+				if (Math.abs(str.length() - word.length()) > 3)
+					continue;
 				int distance = m.getDistance(word, str);
 				if (distance < minDistance) {
 					minDistance = distance;
@@ -38,7 +40,10 @@ public class NGramCorrector {
 				}
 			}
 		}
-		return result;
+		if (minDistance <= 3)
+			return result;
+		else
+			return word;
 	}
 	
 	private List getList(String ngram) {

@@ -81,7 +81,7 @@ public class FinalProject {
 		HashMap<String,Integer> biMap = null;
 		try {
 			ObjectInputStream reader =
-					new ObjectInputStream(new BufferedInputStream(new FileInputStream("data/index/bigramMap.idx")));
+					new ObjectInputStream(new BufferedInputStream(new FileInputStream("data/index/ngramMap.idx")));
 			Object ret = null;
 			ret = reader.readObject();
 			biMap = (HashMap<String,Integer>)ret;
@@ -222,6 +222,8 @@ public class FinalProject {
 			int minDistance = Integer.MAX_VALUE;
 			int maxWeight = Integer.MIN_VALUE;
 			for (String str: freqDict.keySet()) {
+				if (Math.abs(str.length() - word.length()) > 3)
+					continue;
 				int distance = dl.getDistance(word, str);
 				if (distance < minDistance) {
 					minDistance = distance;
@@ -231,7 +233,10 @@ public class FinalProject {
 					result = str;
 				}
 			}
-			return result;
+			if (minDistance <= 3)
+				return result;
+			else
+				return word;
 		}
 		
 		return nc.correct(word, freqDict);

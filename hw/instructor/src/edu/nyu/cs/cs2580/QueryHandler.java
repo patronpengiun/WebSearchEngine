@@ -187,7 +187,7 @@ class QueryHandler implements HttpHandler {
 	  response.append(builder.toString() + "\n");
 	  	  
 	  response.append("<input type='text' id='tags' class='search-bar' name='query' value='" + cgi_query + "'></input>");
-	  response.append("<input type='button' id='submit' value='Search'></input>");
+	  response.append("<span id='submit'><a class='search-btn'>Search</a></span>");
 	  
 	  response.append("</div>");
 	  
@@ -198,12 +198,13 @@ class QueryHandler implements HttpHandler {
 		  String url = doc.get_doc().getUrl();
 		  String title = doc.get_doc().getTitle();
 		  response.append("<div class='results'>");
-		  response.append("<a href='http://en.wikipedia.org/wiki/" + url + "' target='_blank'>" + title + "</a></p>" + "\n");
+		  response.append("<a href='http://en.wikipedia.org/wiki/" + url + "' target='_blank'>" + title + "</a><div class='url'>"
+		  		+ "http://en.wikipedia.org/wiki/" + url + "</div>" + "\n");
 		  response.append("</div>");
 	  }
 	  if (scoredDocs.size() == 0) {
 		  response.append("<div class='results'><p>Your search - <span><b>'" + cgi_query + "'</b></span> - did not find any document.</p>");
-		  response.append("<p>Surrestions: </p>"
+		  response.append("<p>Suggestions: </p>"
 		  		+ "<p><ul><li>Make sure all words are spelled correctly.</li>"
 		  		+ "<li>Try different keywords.</li><ul></p>");
 		  response.append("</div>");

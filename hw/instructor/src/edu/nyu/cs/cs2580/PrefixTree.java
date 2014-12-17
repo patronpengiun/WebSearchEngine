@@ -6,9 +6,17 @@ import java.util.*;
 public class PrefixTree implements Serializable{
 	private static final long serialVersionUID = -8568926562981497095L;
 	private Node root;
+	private HashSet<String> stopWords;
 	
 	public PrefixTree() {
 		root = new Node('*');
+		String[] rawStopWords = new String[] {
+				"i", "a", "about", "an", "are", "as", "at", "be", "by",  
+				"for", "from", "how", "in", "is", "it", "of", "on", "or", 
+				"that", "the", "this", "to", "was", "what", "when", "where",
+				"who", "will", "with", "and", "[edit]", "^"
+			};
+		stopWords = new HashSet<String>(Arrays.asList(rawStopWords));
 	}
 	
 	public void add(String word, int weight) {
@@ -51,6 +59,9 @@ public class PrefixTree implements Serializable{
 		PriorityQueue<WeightedString> q = new PriorityQueue<WeightedString>();
 		StringBuilder sb = new StringBuilder();
 		
+		if (prefix.length() == 0)
+			return result;
+		
 		Node worker = root;
 		for (int i=0;i<prefix.length();i++) {
 			worker = worker.children.get(prefix.charAt(i));
@@ -68,7 +79,9 @@ public class PrefixTree implements Serializable{
 	
 	private void searchHelper(int limit, PriorityQueue<WeightedString> q, Node node, StringBuilder sb) {
 		if (node.weight != null) {
-			q.add(new WeightedString(sb.toString(),node.weight));
+			String temp = sb.toString();
+			if (isValidLookup(temp))
+				q.add(new WeightedString(temp,node.weight));
 			if (q.size() > limit)
 				q.poll();
 		}
@@ -77,7 +90,19 @@ public class PrefixTree implements Serializable{
 			searchHelper(limit,q,n,sb);
 			sb.setLength(sb.length() - 1);
 		}
+	}
+	
+	private boolean isValidLookup(String str) {
+		String[] temp = str.split(" ");
 		
+		if (str.contains("\"") || str.contains("^") || str.contains("-") || str.contains(")") || str.contains("("))
+			return false;
+		
+		if (temp.length == 1) {
+			return !stopWords.contains(temp[0]);
+		} else {
+			return !stopWords.contains(temp[temp.length-1]);
+		}
 	}
 	
 	class Node implements Serializable{

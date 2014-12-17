@@ -9,7 +9,7 @@ import java.math.*;
 public class SpellCorrection{
 	public static void main(String[] args) throws IOException {
 		SpellCorrection spell = new SpellCorrection();
-		String word = "azvertis";
+		String word = "votka";
 		long startTime = System.nanoTime();
 		String see = spell.correct(word);
 		long endTime = System.nanoTime();
@@ -36,6 +36,7 @@ public class SpellCorrection{
 		endTime = System.nanoTime();
 		System.out.println(result);
 		System.out.println("took "+(endTime - startTime)*1.0/1000000000L + " s"); 
+		System.out.println("edit distance: " + minDistance);
 		
 		// ---------------------
 		
@@ -43,6 +44,16 @@ public class SpellCorrection{
 		cc.construct(spell.dict.keySet());
 		startTime = System.nanoTime();
 		result = cc.correct(word, spell.dict);
+		endTime = System.nanoTime();
+		System.out.println(result);
+		System.out.println("took "+(endTime - startTime)*1.0/1000000000L + " s");
+		
+		// ---------------------
+		
+		NGramCorrector ccc = new NGramCorrector(3);
+		ccc.construct(spell.dict.keySet());
+		startTime = System.nanoTime();
+		result = ccc.correct(word, spell.dict);
 		endTime = System.nanoTime();
 		System.out.println(result);
 		System.out.println("took "+(endTime - startTime)*1.0/1000000000L + " s");
@@ -115,6 +126,12 @@ public class SpellCorrection{
 		    
 		    if(candidates.size() > 0)   
 			      return candidates.get(Collections.max(candidates.keySet()));
+		    
+		    /*for(String s : list) 
+			      for(String w : edits(s)) 
+			    	  for (String next: edits(w))
+			    		  if(dict.containsKey(next)) 
+			    			  candidates.put(dict.get(next),next);*/
 		    
 		    // If found something edit distance 2 return the most frequent word.
 		    // If not return the word with a "?" prepended.  (Original just returned the word.)
